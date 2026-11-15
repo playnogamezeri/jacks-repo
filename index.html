@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#ffffff">
-<meta name="description" content="Jack's RePO — your personal creative studio.">
+<meta name="description" content="Toon Jack — your personal creative studio.">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png" type="image/png">
-<title>Jack's RePO — Personal Studio</title>
+<title>Toon Jack — Personal Studio</title>
 <style>
 :root{--bg:#fff;--ink:#142321;--muted:#687976;--teal:#168f88;--deep:#08756f;--soft:#e9f6f4;--line:#d8e7e4;--danger:#b43d43}
 *{box-sizing:border-box}body{margin:0;background:#f8fbfa;color:var(--ink);font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
@@ -61,7 +61,7 @@ footer{text-align:center;color:#81908d;font-size:11px;padding:24px 0 5px}
 </head>
 <body>
 <div class="app">
-<header><div class="logo">♫</div><div><h1>Jack's RePO</h1><div class="tag">Your personal creative studio</div></div></header>
+<header><div class="logo">♫</div><div><h1>Toon Jack</h1><div class="tag">Your personal creative studio</div></div></header>
 <div class="hero"><h2>Your songs.<br>Your voice. Your space.</h2><p>Write something honest, record it, and keep every take.</p></div>
 <nav><button id="writeTab" class="active">✎ Write & Record</button><button id="libraryTab">♫ My Songs</button></nav>
 <main id="writePage">
@@ -137,7 +137,7 @@ footer{text-align:center;color:#81908d;font-size:11px;padding:24px 0 5px}
  <div id="takeList"></div>
 </section>
 </main>
-<footer>Jack's RePO · made for the things only you can create.</footer>
+<footer>Toon Jack · made for the things only you can create.</footer>
 </div>
 <script>
 const $=id=>document.getElementById(id);
@@ -195,7 +195,7 @@ async function refreshLibrary(){
  for(const s of songs){const row=document.createElement('div');row.className='song-item';const main=document.createElement('div');main.className='song-main';const title=document.createElement('strong');title.textContent=s.title;const meta=document.createElement('small');meta.textContent='Edited '+dateText(s.updatedAt);main.append(title,meta);const edit=document.createElement('button');edit.className='secondary';edit.textContent='Open';edit.onclick=()=>loadSong(s.id);const del=document.createElement('button');del.className='danger';del.textContent='Delete';del.onclick=()=>deleteSong(s.id);row.append(main,edit,del);list.append(row)}
  const takes=await reqPromise(store('takes').getAll());takes.sort((a,b)=>b.createdAt-a.createdAt);const tl=$('takeList');tl.innerHTML='';
  if(!takes.length){const empty=document.createElement('div');empty.className='empty';empty.innerHTML='<div class="symbol">♫</div>No recordings saved yet. Your takes will appear here.';tl.append(empty)}
- for(const t of takes){const item=document.createElement('div');item.className='take-item';const title=document.createElement('strong');title.textContent=t.songTitle||'Untitled song';const meta=document.createElement('small');meta.textContent=dateText(t.createdAt)+' · '+durationText(t.duration);const player=document.createElement('audio');player.controls=true;player.preload='none';const url=URL.createObjectURL(t.blob);player.src=url;const actions=document.createElement('div');actions.className='take-actions';const dl=document.createElement('button');dl.className='secondary';dl.textContent='Download';dl.onclick=()=>{const a=document.createElement('a');a.href=url;a.download=(t.songTitle||'hearthsong-take').replace(/[^a-z0-9-_ ]/gi,'').trim().replace(/\s+/g,'-')+'-'+dateText(t.createdAt).replace(/[^0-9]/g,'')+'.'+(t.type.includes('mp4')?'mp4':'webm');a.click()};const remove=document.createElement('button');remove.className='danger';remove.textContent='Delete';remove.onclick=()=>deleteTake(t.id);actions.append(dl,remove);item.append(title,meta,player,actions);tl.append(item)}
+ for(const t of takes){const item=document.createElement('div');item.className='take-item';const title=document.createElement('strong');title.textContent=t.songTitle||'Untitled song';const meta=document.createElement('small');meta.textContent=dateText(t.createdAt)+' · '+durationText(t.duration);const player=document.createElement('audio');player.controls=true;player.preload='none';const url=URL.createObjectURL(t.blob);player.src=url;const actions=document.createElement('div');actions.className='take-actions';const dl=document.createElement('button');dl.className='secondary';dl.textContent='Download';dl.onclick=()=>{const a=document.createElement('a');a.href=url;a.download=(t.songTitle||'toon-jack-take').replace(/[^a-z0-9-_ ]/gi,'').trim().replace(/\s+/g,'-')+'-'+dateText(t.createdAt).replace(/[^0-9]/g,'')+'.'+(t.type.includes('mp4')?'mp4':'webm');a.click()};const remove=document.createElement('button');remove.className='danger';remove.textContent='Delete';remove.onclick=()=>deleteTake(t.id);actions.append(dl,remove);item.append(title,meta,player,actions);tl.append(item)}
 }
 async function deleteSong(id){if(!confirm('Delete this song and all of its recordings?'))return;const takes=await reqPromise(store('takes').getAll());const tx=db.transaction(['songs','takes'],'readwrite');tx.objectStore('songs').delete(id);for(const t of takes)if(t.songId===id)tx.objectStore('takes').delete(t.id);tx.oncomplete=()=>refreshLibrary()}
 async function deleteTake(id){if(!confirm('Delete this recording?'))return;await reqPromise(store('takes','readwrite').delete(id));refreshLibrary()}
