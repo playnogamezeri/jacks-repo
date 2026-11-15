@@ -421,13 +421,15 @@ class MainActivity : Activity() {
         takes.forEachIndexed{index,file->
             val item=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(4,6,4,8)}
             item.addView(TextView(this).apply{text=(index+1).toString()+".  "+recordingDateLabel(file).removePrefix("Recorded: ");textSize=12f;setTextColor(Color.GRAY)})
+            item.addView(TextView(this).apply{text=recordingDisplayName(file);textSize=16f;setTypeface(null,Typeface.BOLD);setTextColor(Color.rgb(35,55,52));setPadding(2,2,2,6)})
             val takeRow=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
             takeRow.addView(button(if(playingFile==file.absolutePath && player?.isPlaying==true)"Ⅱ Play" else "▶ Play"){playTake(file)},LinearLayout.LayoutParams(0,-2,1f))
             takeRow.addView(button("Studio Enhance"){showGenreModifier(file)},LinearLayout.LayoutParams(0,-2,1f))
             takeRow.addView(button("Delete"){AlertDialog.Builder(this@MainActivity).setTitle("Delete recording?").setMessage("Permanently delete this saved take? This cannot be undone.").setNegativeButton("Cancel",null).setPositiveButton("Delete"){_,_->deleteTake(file)}.show()},LinearLayout.LayoutParams(0,-2,1f))
             item.addView(takeRow)
+            item.addView(button("Rename recording") { showRecordingNameDialog(file, true) })
             item.addView(button("⬇  Download audio file") { exportRecording(file) })
-            item.addView(TextView(this).apply{text=file.name;textSize=10f;setTextColor(Color.DKGRAY);setPadding(4,0,4,0)})
+            item.addView(TextView(this).apply{text=file.name;textSize=10f;setTextColor(Color.GRAY);setPadding(4,0,4,0)})
             recordingList.addView(item)
             if(index< takes.lastIndex) recordingList.addView(View(this).apply{setBackgroundColor(Color.rgb(215,229,226));layoutParams=LinearLayout.LayoutParams(-1,1)})
         }
@@ -695,6 +697,72 @@ class MainActivity : Activity() {
     }
 
 
+    private fun recordingLabels():JSONObject = JSONObject(prefs.getString("recording_labels","{}") ?: "{}")
+
+    private fun recordingRoot(file:File):String? = Regex("^(take_\\d+)").find(file.name)?.groupValues?.getOrNull(1)
+
+    private fun recordingLabelData(file:File):JSONObject? {
+        val labels=recordingLabels()
+        labels.optJSONObject(file.name)?.let{return it}
+        val root=recordingRoot(file) ?: return null
+        val original=filesDir.listFiles()?.firstOrNull{it.name==root+".wav" || it.name==root+".m4a"}
+        return original?.let{labels.optJSONObject(it.name)}
+    }
+
+    private fun recordingDisplayName(file:File):String {
+        val label=recordingLabelData(file)
+        val title=label?.optString("title").orEmpty()
+        val take=label?.optInt("take",0) ?: 0
+        if(title.isBlank() || take<1)return "Recording · "+recordingDateLabel(file).removePrefix("Recorded: ")
+        val suffix=if(file.name==recordingRoot(file)+".wav" || file.name==recordingRoot(file)+".m4a") "" else " · "+file.nameWithoutExtension.substringAfter(recordingRoot(file)+"_","Processed")
+        return "$title - Take "+String.format(java.util.Locale.US,"%02d",take)+suffix
+    }
+
+    private fun safeAudioFileName(label:String,extension:String):String {
+        val safe=label.replace(Regex("[\\\\/:*?\\\"<>|]")," ").replace(Regex("\\s+")," ").trim().take(100).ifBlank{"Hearthsong Recording"}
+        return "$safe.$extension"
+    }
+
+    private fun showRecordingNameDialog(file:File,renaming:Boolean=false) {
+        if(!file.exists())return
+        val labels=recordingLabels()
+        val current=recordingLabelData(file)
+        val input=EditText(this).apply{
+            setSingleLine(true)
+            hint="Song title"
+            setText(if(renaming)current?.optString("title").orEmpty() else titleBox.text.toString().trim())
+            setSelection(text.length)
+        }
+        val dialog=AlertDialog.Builder(this)
+            .setTitle(if(renaming)"Rename recording" else "Name this song")
+            .setMessage(if(renaming)"Change the song title for this recording. The audio itself will not change." else "What song did you just record? Hearthsong will number each take automatically.")
+            .setView(input)
+            .setNegativeButton(if(renaming)"Cancel" else "Skip",null)
+            .setPositiveButton(if(renaming)"Save name" else "Save recording",null)
+            .create()
+        dialog.setOnShowListener{
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener{
+                val title=input.text.toString().trim()
+                if(title.isBlank()){input.error="Enter a song title";return@setOnClickListener}
+                val take=if(renaming) current?.optInt("take",1) ?: 1 else {
+                    var highest=0
+                    val all=filesDir.listFiles()?.filter{it.name.startsWith("take_")&&it.extension in setOf("wav","m4a")} ?: emptyList()
+                    all.forEach{candidate->
+                        val data=recordingLabels().optJSONObject(candidate.name)
+                        if(data?.optString("title")?.equals(title,true)==true)highest=maxOf(highest,data.optInt("take",0))
+                    }
+                    highest+1
+                }
+                labels.put(file.name,JSONObject().put("title",title).put("take",take))
+                prefs.edit().putString("recording_labels",labels.toString()).apply()
+                dialog.dismiss()
+                renderLibrary()
+                toast(if(renaming)"Recording renamed." else "$title · Take "+String.format(java.util.Locale.US,"%02d",take)+" saved.")
+            }
+        }
+        dialog.show()
+    }
+
     private fun exportRecording(file:File){
         if(!file.exists()){
             toast("This recording could not be found.")
@@ -705,7 +773,7 @@ class MainActivity : Activity() {
         val intent=Intent(Intent.ACTION_CREATE_DOCUMENT).apply{
             addCategory(Intent.CATEGORY_OPENABLE)
             type=mime
-            putExtra(Intent.EXTRA_TITLE,file.name)
+            putExtra(Intent.EXTRA_TITLE,safeAudioFileName(recordingDisplayName(file),file.extension))
         }
         try{
             startActivityForResult(intent,audioExportRequest)
@@ -742,7 +810,7 @@ class MainActivity : Activity() {
         try{
             val songs=prefs.getString("songs","[]")?:"[]"
             val takes=filesDir.listFiles()?.filter{it.name.startsWith("take_")&&it.extension in setOf("m4a","wav")}?: emptyList()
-            val metadata=JSONObject().put("app","Hearthsong").put("formatVersion",1).put("createdAt",System.currentTimeMillis()).put("songs",JSONArray(songs))
+            val metadata=JSONObject().put("app","Hearthsong").put("formatVersion",1).put("createdAt",System.currentTimeMillis()).put("songs",JSONArray(songs)).put("recordingLabels",recordingLabels())
             val names=JSONArray()
             takes.forEach{names.put(it.name)}
             metadata.put("recordings",names)
@@ -802,6 +870,8 @@ class MainActivity : Activity() {
                 if(title !in seen){merged.put(item);seen.add(title)}
             }
             var restored=0
+            val restoredLabels=recordingLabels()
+            val incomingLabels=data.optJSONObject("recordingLabels") ?: JSONObject()
             tempDir.listFiles()?.forEach{source->
                 var target=java.io.File(filesDir,source.name)
                 if(target.exists()){
@@ -810,9 +880,11 @@ class MainActivity : Activity() {
                     var suffix=1
                     do{target=java.io.File(filesDir,base+"_restored"+suffix+"."+extension);suffix++}while(target.exists())
                 }
-                source.copyTo(target,false);restored++
+                source.copyTo(target,false)
+                incomingLabels.optJSONObject(source.name)?.let{restoredLabels.put(target.name,it)}
+                restored++
             }
-            prefs.edit().putString("songs",merged.toString()).apply()
+            prefs.edit().putString("songs",merged.toString()).putString("recording_labels",restoredLabels.toString()).apply()
             renderLibrary()
             toast("Restore complete: "+restored+" recordings added. Existing content kept.")
         }catch(e:Exception){toast("Restore failed: "+(e.message?:"file could not be read"))}
@@ -1144,6 +1216,7 @@ class MainActivity : Activity() {
                     popupStatus?.text=if(final.exists())"Performance saved on this phone. "+if(recognitionFailed)"Audio was saved; lyric matching was unavailable." else "Audio and lyric-following session saved." else "Recording could not be saved."
                     status.text=if(final.exists())"Performance saved locally: "+final.name else "Performance recording failed."
                     renderLibrary()
+                    if(final.exists())showRecordingNameDialog(final)
                 }
             }catch(e:Exception){
                 raw.delete()
