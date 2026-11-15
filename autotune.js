@@ -20,7 +20,7 @@ function connectVocalModifier(ctx,input,destination,settings={}){
  input.connect(hp);hp.connect(low);low.connect(mid);mid.connect(high);high.connect(comp);
  const dry=ctx.createGain();dry.gain.value=1-(p.reverb*.35+p.delay*.2)*amount;comp.connect(dry);dry.connect(bus);
  if(p.reverb>0){const convolver=ctx.createConvolver(),length=Math.floor(ctx.sampleRate*1.35),impulse=ctx.createBuffer(2,length,ctx.sampleRate);for(let ch=0;ch<2;ch++){const data=impulse.getChannelData(ch);for(let i=0;i<length;i++)data[i]=(Math.random()*2-1)*Math.pow(1-i/length,3.2)}convolver.buffer=impulse;const wet=ctx.createGain();wet.gain.value=p.reverb*amount;comp.connect(convolver);convolver.connect(wet);wet.connect(bus)}
- if(p.delay>0){const delay=ctx.createDelay(.5);delay.delayTime.value=.19;const feedback=ctx.createGain();feedback.gain.value=.16*amount;const wet=ctx.createGain();wet.gain.value=p.delay*amount;comp.connect(delay);delay.connect(feedback);feedback.connect(delay);delay.connect(wet);wet.connect(destination)}
+ if(p.delay>0){const delay=ctx.createDelay(.5);delay.delayTime.value=.19;const feedback=ctx.createGain();feedback.gain.value=.16*amount;const wet=ctx.createGain();wet.gain.value=p.delay*amount;comp.connect(delay);delay.connect(feedback);feedback.connect(delay);delay.connect(wet);wet.connect(bus)}
  return bus;
 }
 
@@ -50,7 +50,8 @@ function nearestShift(freq,settings){
     if(scale.includes(((n-root)%12+12)%12)&&Math.abs(n-midi)<dist){best=n;dist=Math.abs(n-midi)}
   }
   const strength=Math.max(0,Math.min(100,Number(settings.strength??75)))/100;
-  return (best-midi)*strength;
+  const limit=settings.mode==="hard"?6:2.5;
+  return Math.max(-limit,Math.min(limit,(best-midi)*strength));
 }
 function detectPitch(buf,sampleRate){
   let rms=0;for(let i=0;i<buf.length;i++)rms+=buf[i]*buf[i];rms=Math.sqrt(rms/buf.length);
@@ -62,7 +63,7 @@ function detectPitch(buf,sampleRate){
     const score=sum/(buf.length-lag);
     if(score>best){best=score;bestLag=lag}
   }
-  if(bestLag<0)return null;
+  if(bestLag<0||best<0.012)return null;
   return sampleRate/bestLag;
 }
 async function makeGraph(inputStream,settings,monitor=false){
@@ -77,7 +78,7 @@ async function makeGraph(inputStream,settings,monitor=false){
   const dest=ctx.createMediaStreamDestination();
   const effected=connectVocalModifier(ctx,node,dest,settings);
   source.connect(analyser);analyser.connect(node);
-  if(monitor)effected.connect(ctx.destination);
+  // Deliberately do not route microphone audio to the phone speaker.\n  // Acoustic feedback can create a loud screech; the processed stream is still recorded.
   const data=new Float32Array(analyser.fftSize);
   let raf=0,last=0;
   const track=()=>{
@@ -87,7 +88,7 @@ async function makeGraph(inputStream,settings,monitor=false){
     raf=requestAnimationFrame(track);
   };
   track();
-  return {stream:dest.stream,stop:async()=>{cancelAnimationFrame(raf);inputStream.getTracks().forEach(t=>t.stop());try{await ctx.close()}catch{}}};
+  return {stream:dest.stream,stop:async()=>{cancelAnimationFrame(raf);inputStream.getTracks().forEach(t=>t.stop());dest.stream.getTracks().forEach(t=>t.stop());try{await ctx.close()}catch{}}};
 }
 window.toonAutotune={
   async live(inputStream,settings,monitor){return makeGraph(inputStream,settings,monitor)},
