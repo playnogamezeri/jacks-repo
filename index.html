@@ -196,7 +196,7 @@ $('recordButton').onclick=async()=>{
  try{
   await saveCurrentSong();
   stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
-  if($('liveAutotune').checked){if(!window.toonAutotune)throw new Error('Autotune module is still loading');$('autotuneStatus').textContent='Preparing live pitch correction…';autotuneGraph=await window.toonAutotune.live(stream,getTuneSettings(),false);stream=autotuneGraph.stream;$('autotuneStatus').textContent='Live Autotune is active for this take.';}
+  if($('liveAutotune').checked){if(!window.toonAutotune)throw new Error('Autotune module is still loading');$('autotuneStatus').textContent='Preparing live pitch correction…';autotuneGraph=await window.toonAutotune.live(stream,getTuneSettings(),true);stream=autotuneGraph.stream;$('autotuneStatus').textContent='Live Autotune is active for this take.';}
   chunks=[];const mime=['audio/webm;codecs=opus','audio/webm','audio/mp4'].find(t=>MediaRecorder.isTypeSupported(t));pendingType=mime||'audio/webm';recorder=new MediaRecorder(stream,mime?{mimeType:mime}:undefined);
   recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
   recorder.onstop=()=>{stopAutoScroll();if(autotuneGraph){autotuneGraph.stop();autotuneGraph=null;}pendingBlob=new Blob(chunks,{type:recorder.mimeType||pendingType});if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;clearInterval(timerHandle);setRecordingUI(false);$('recordState').textContent='Recording complete';$('recordHint').textContent='Listen before saving your take';$('preview').src=URL.createObjectURL(pendingBlob);$('previewBox').hidden=false;$('recordStatus').textContent='Your take is ready. Save it to keep it in My Songs.'};
