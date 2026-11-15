@@ -1,4 +1,28 @@
-// Toon Jack Autotune engine
+// Toon Jack Autotune and vocal modifier engine
+
+const MODIFIERS={
+ clean:{hp:75,low:0,mid:0,high:0,comp:1.5,reverb:0,delay:0},
+ dreamy:{hp:90,low:1.5,mid:-1,high:2.5,comp:2.2,reverb:.34,delay:.10},
+ youngBlue:{hp:105,low:-.5,mid:1.2,high:3.2,comp:2.5,reverb:.12,delay:.04},
+ warm:{hp:65,low:2.5,mid:0,high:-1.5,comp:2.8,reverb:.08,delay:0},
+ radio:{hp:120,low:-2,mid:2.5,high:1.5,comp:5,reverb:.03,delay:0},
+ rnb:{hp:80,low:1.5,mid:-.8,high:1.8,comp:3,reverb:.22,delay:.08}
+};
+function connectVocalModifier(ctx,input,destination,settings={}){
+ const p=MODIFIERS[settings.modifier]||MODIFIERS.clean;
+ const amount=Math.max(0,Math.min(1,Number(settings.modifierAmount??70)/100));
+ const hp=ctx.createBiquadFilter();hp.type="highpass";hp.frequency.value=p.hp;
+ const low=ctx.createBiquadFilter();low.type="lowshelf";low.frequency.value=180;low.gain.value=p.low*amount;
+ const mid=ctx.createBiquadFilter();mid.type="peaking";mid.frequency.value=2400;mid.Q.value=.9;mid.gain.value=p.mid*amount;
+ const high=ctx.createBiquadFilter();high.type="highshelf";high.frequency.value=7500;high.gain.value=p.high*amount;
+ const comp=ctx.createDynamicsCompressor();comp.threshold.value=-22;comp.knee.value=18;comp.ratio.value=1+(p.comp-1)*amount;comp.attack.value=.008;comp.release.value=.16;
+ input.connect(hp);hp.connect(low);low.connect(mid);mid.connect(high);high.connect(comp);
+ const dry=ctx.createGain();dry.gain.value=1-(p.reverb*.35+p.delay*.2)*amount;comp.connect(dry);dry.connect(destination);
+ if(p.reverb>0){const convolver=ctx.createConvolver(),length=Math.floor(ctx.sampleRate*1.35),impulse=ctx.createBuffer(2,length,ctx.sampleRate);for(let ch=0;ch<2;ch++){const data=impulse.getChannelData(ch);for(let i=0;i<length;i++)data[i]=(Math.random()*2-1)*Math.pow(1-i/length,3.2)}convolver.buffer=impulse;const wet=ctx.createGain();wet.gain.value=p.reverb*amount;comp.connect(convolver);convolver.connect(wet);wet.connect(destination)}
+ if(p.delay>0){const delay=ctx.createDelay(.5);delay.delayTime.value=.19;const feedback=ctx.createGain();feedback.gain.value=.16*amount;const wet=ctx.createGain();wet.gain.value=p.delay*amount;comp.connect(delay);delay.connect(feedback);feedback.connect(delay);delay.connect(wet);wet.connect(destination)}
+ return dry;
+}
+
 // Pitch correction is built from SoundTouchJS AudioWorklet pitch shifting plus
 // a lightweight autocorrelation pitch tracker. The original recording is never overwritten.
 const PACKAGE = "https://esm.sh/@soundtouchjs/audio-worklet@2.1.1";
@@ -50,8 +74,9 @@ async function makeGraph(inputStream,settings,monitor=false){
   const analyser=ctx.createAnalyser();analyser.fftSize=4096;analyser.smoothingTimeConstant=0.15;
   const node=new SoundTouchNode({context:ctx});
   const dest=ctx.createMediaStreamDestination();
-  source.connect(analyser);analyser.connect(node);node.connect(dest);
-  if(monitor)node.connect(ctx.destination);
+  const effected=connectVocalModifier(ctx,node,dest,settings);
+  source.connect(analyser);analyser.connect(node);
+  if(monitor)effected.connect(ctx.destination);
   const data=new Float32Array(analyser.fftSize);
   let raf=0,last=0;
   const track=()=>{
@@ -74,7 +99,8 @@ window.toonAutotune={
     const source=ctx.createBufferSource();source.buffer=buffer;
     const analyser=ctx.createAnalyser();analyser.fftSize=4096;
     const node=new SoundTouchNode({context:ctx});const dest=ctx.createMediaStreamDestination();
-    source.connect(analyser);analyser.connect(node);node.connect(dest);
+    const effected=connectVocalModifier(ctx,node,dest,settings);
+    source.connect(analyser);analyser.connect(node);
     const data=new Float32Array(analyser.fftSize);let raf=0;
     const track=()=>{analyser.getFloatTimeDomainData(data);const f=detectPitch(data,ctx.sampleRate);if(f){const s=nearestShift(f,settings);if(s!==null)node.pitchSemitones.setTargetAtTime(s,ctx.currentTime,settings.mode==="hard"?0.012:0.055)}raf=requestAnimationFrame(track)};
     track();
