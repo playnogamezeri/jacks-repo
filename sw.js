@@ -1,4 +1,4 @@
-const CACHE_NAME = "toon-jack-shell-v12";
+const CACHE_NAME = "toon-jack-shell-v13";
 const APP_FILES = ["./", "./index.html", "./autotune.js", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_FILES)));
