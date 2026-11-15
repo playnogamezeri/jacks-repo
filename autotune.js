@@ -44,6 +44,7 @@ async function makeGraph(inputStream,settings,monitor=false){
   const SoundTouchNode=await getEngine();
   const Ctx=window.AudioContext||window.webkitAudioContext;
   const ctx=new Ctx();
+  await ctx.resume();
   await ctx.audioWorklet.addModule(PROCESSOR);
   const source=ctx.createMediaStreamSource(inputStream);
   const analyser=ctx.createAnalyser();analyser.fftSize=4096;analyser.smoothingTimeConstant=0.15;
@@ -67,6 +68,7 @@ window.toonAutotune={
   async process(blob,settings,onProgress){
     const Ctx=window.AudioContext||window.webkitAudioContext,ctx=new Ctx();
     const SoundTouchNode=await getEngine();
+    await ctx.resume();
     await ctx.audioWorklet.addModule(PROCESSOR);
     const raw=await blob.arrayBuffer(),buffer=await ctx.decodeAudioData(raw);
     const source=ctx.createBufferSource();source.buffer=buffer;
