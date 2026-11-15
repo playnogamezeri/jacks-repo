@@ -99,6 +99,8 @@ class MainActivity : Activity() {
     private var editingSongTitle: String? = null
     private val backupCreateRequest = 701
     private val backupRestoreRequest = 702
+    private val audioExportRequest = 703
+    private var pendingAudioExport: File? = null
     private var popupLyricScroll: ScrollView? = null
     private var popupLyricText: TextView? = null
     private var popupStatus: TextView? = null
@@ -424,6 +426,7 @@ class MainActivity : Activity() {
             takeRow.addView(button("Studio Enhance"){showGenreModifier(file)},LinearLayout.LayoutParams(0,-2,1f))
             takeRow.addView(button("Delete"){AlertDialog.Builder(this@MainActivity).setTitle("Delete recording?").setMessage("Permanently delete this saved take? This cannot be undone.").setNegativeButton("Cancel",null).setPositiveButton("Delete"){_,_->deleteTake(file)}.show()},LinearLayout.LayoutParams(0,-2,1f))
             item.addView(takeRow)
+            item.addView(button("⬇  Download audio file") { exportRecording(file) })
             item.addView(TextView(this).apply{text=file.name;textSize=10f;setTextColor(Color.DKGRAY);setPadding(4,0,4,0)})
             recordingList.addView(item)
             if(index< takes.lastIndex) recordingList.addView(View(this).apply{setBackgroundColor(Color.rgb(215,229,226));layoutParams=LinearLayout.LayoutParams(-1,1)})
@@ -692,6 +695,26 @@ class MainActivity : Activity() {
     }
 
 
+    private fun exportRecording(file:File){
+        if(!file.exists()){
+            toast("This recording could not be found.")
+            return
+        }
+        val mime=if(file.extension.equals("m4a",true))"audio/mp4" else "audio/wav"
+        pendingAudioExport=file
+        val intent=Intent(Intent.ACTION_CREATE_DOCUMENT).apply{
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type=mime
+            putExtra(Intent.EXTRA_TITLE,file.name)
+        }
+        try{
+            startActivityForResult(intent,audioExportRequest)
+        }catch(e:Exception){
+            pendingAudioExport=null
+            toast("Could not open the phone's file picker.")
+        }
+    }
+
     private fun createBackupPicker(){
         val intent=Intent(Intent.ACTION_CREATE_DOCUMENT).apply{
             addCategory(Intent.CATEGORY_OPENABLE)
@@ -804,6 +827,21 @@ class MainActivity : Activity() {
         when(requestCode){
             backupCreateRequest->writeBackup(uri)
             backupRestoreRequest->readBackup(uri)
+            audioExportRequest->{
+                val source=pendingAudioExport
+                pendingAudioExport=null
+                if(source==null || !source.exists()){
+                    toast("That recording is no longer available.")
+                }else{
+                    try{
+                        contentResolver.openOutputStream(uri)?.use{output->source.inputStream().use{input->input.copyTo(output)}}
+                            ?:throw java.io.IOException("Could not open the selected download location.")
+                        toast("Recording downloaded successfully.")
+                    }catch(e:Exception){
+                        toast("Download failed: "+(e.message?:"could not save audio"))
+                    }
+                }
+            }
         }
     }
 
