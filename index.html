@@ -57,6 +57,8 @@ button{font:inherit;cursor:pointer}button:disabled{opacity:.45;cursor:not-allowe
 [hidden]{display:none!important}
 footer{text-align:center;color:#81908d;font-size:11px;padding:24px 0 5px}
 @media(min-width:620px){.app{padding:24px 24px 50px}.card{padding:21px}}
+
+.autotune-panel{border:1px solid #cfe3df;background:#f6fbfa;border-radius:14px;padding:13px;margin:13px 0;text-align:left}.autotune-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.autotune-grid label{margin:5px 0}.autotune-grid select,.autotune-grid input{width:100%;padding:9px;border:1px solid #cbdad8;border-radius:9px;background:#fff;color:var(--ink)}.autotune-toggle{display:flex;align-items:center;gap:9px;font-weight:750;color:var(--ink);font-size:13px}.autotune-toggle input{width:18px;height:18px;accent-color:var(--teal)}
 </style>
 </head>
 <body>
@@ -100,6 +102,19 @@ footer{text-align:center;color:#81908d;font-size:11px;padding:24px 0 5px}
  <div class="eyebrow">02 / Record your song</div>
  <h2 class="section-title">Capture a take.</h2>
  <p class="muted">Record your voice and guitar together through your phone's microphone. If you want to record guitar and singing, place your phone where it can hear both.</p>
+
+ <div class="autotune-panel">
+  <div class="eyebrow">Optional vocal effect</div>
+  <label class="autotune-toggle"><input type="checkbox" id="liveAutotune"> Live Autotune while recording</label>
+  <div class="autotune-grid">
+   <div><label for="tuneMode">Style</label><select id="tuneMode"><option value="natural">Natural</option><option value="hard">Hard Tune</option></select></div>
+   <div><label for="tuneKey">Key</label><select id="tuneKey"><option>C</option><option>C#</option><option>D</option><option>D#</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>G#</option><option>A</option><option>A#</option><option>B</option></select></div>
+   <div><label for="tuneScale">Scale</label><select id="tuneScale"><option value="major">Major</option><option value="minor">Minor</option><option value="pentatonic">Pentatonic</option><option value="chromatic">Chromatic</option></select></div>
+   <div><label for="tuneStrength">Correction strength: <span id="tuneStrengthValue">75%</span></label><input id="tuneStrength" type="range" min="0" max="100" value="75"></div>
+  </div>
+  <p class="muted">Headphones are recommended for live processing. Your original dry recording remains untouched.</p>
+  <div class="status" id="autotuneStatus" aria-live="polite">Autotune is ready to configure.</div>
+ </div>
  <div class="recordbox">
   <div id="recordState" class="muted">Microphone is off</div>
   <div class="timer" id="timer">00:00</div>
@@ -109,7 +124,7 @@ footer{text-align:center;color:#81908d;font-size:11px;padding:24px 0 5px}
  <div class="status" id="recordStatus" aria-live="polite"></div>
  <div id="previewBox" hidden style="margin-top:14px">
   <label>Listen to your latest take</label><audio id="preview" controls style="width:100%"></audio>
-  <div class="row" style="margin-top:9px"><button class="primary" id="keepTake">Save recording</button><button class="secondary" id="discardTake">Discard</button></div>
+  <div class="row" style="margin-top:9px"><button class="primary" id="keepTake">Save recording</button><button class="secondary" id="discardTake">Discard</button></div><button class="secondary full" id="postAutotune">✨ Create corrected copy</button>
  </div>
  <p class="muted" style="margin-top:13px">Recordings are saved on this device in this browser. Download important takes as backups. Clearing browser/site data can erase locally saved songs and recordings.</p>
 </section>
@@ -141,7 +156,7 @@ footer{text-align:center;color:#81908d;font-size:11px;padding:24px 0 5px}
 </div>
 <script>
 const $=id=>document.getElementById(id);
-let db=null,currentSongId=null,recorder=null,stream=null,chunks=[],pendingBlob=null,pendingType='audio/webm',startedAt=0,timerHandle=null;
+let db=null,currentSongId=null,recorder=null,stream=null,chunks=[],pendingBlob=null,pendingType='audio/webm',startedAt=0,timerHandle=null,autotuneGraph=null;
 const DB_NAME='hearthsong-studio',DB_VERSION=1;
 function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,DB_VERSION);req.onupgradeneeded=()=>{const d=req.result;if(!d.objectStoreNames.contains('songs')){const s=d.createObjectStore('songs',{keyPath:'id'});s.createIndex('updatedAt','updatedAt')}if(!d.objectStoreNames.contains('takes')){const t=d.createObjectStore('takes',{keyPath:'id'});t.createIndex('createdAt','createdAt');t.createIndex('songId','songId')}};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
 function store(name,mode='readonly'){return db.transaction(name,mode).objectStore(name)}
@@ -181,14 +196,20 @@ $('recordButton').onclick=async()=>{
  try{
   await saveCurrentSong();
   stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+  if($('liveAutotune').checked){if(!window.toonAutotune)throw new Error('Autotune module is still loading');$('autotuneStatus').textContent='Preparing live pitch correction…';autotuneGraph=await window.toonAutotune.live(stream,getTuneSettings(),false);stream=autotuneGraph.stream;$('autotuneStatus').textContent='Live Autotune is active for this take.';}
   chunks=[];const mime=['audio/webm;codecs=opus','audio/webm','audio/mp4'].find(t=>MediaRecorder.isTypeSupported(t));pendingType=mime||'audio/webm';recorder=new MediaRecorder(stream,mime?{mimeType:mime}:undefined);
   recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
-  recorder.onstop=()=>{stopAutoScroll();pendingBlob=new Blob(chunks,{type:recorder.mimeType||pendingType});if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;clearInterval(timerHandle);setRecordingUI(false);$('recordState').textContent='Recording complete';$('recordHint').textContent='Listen before saving your take';$('preview').src=URL.createObjectURL(pendingBlob);$('previewBox').hidden=false;$('recordStatus').textContent='Your take is ready. Save it to keep it in My Songs.'};
+  recorder.onstop=()=>{stopAutoScroll();if(autotuneGraph){autotuneGraph.stop();autotuneGraph=null;}pendingBlob=new Blob(chunks,{type:recorder.mimeType||pendingType});if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;clearInterval(timerHandle);setRecordingUI(false);$('recordState').textContent='Recording complete';$('recordHint').textContent='Listen before saving your take';$('preview').src=URL.createObjectURL(pendingBlob);$('previewBox').hidden=false;$('recordStatus').textContent='Your take is ready. Save it to keep it in My Songs.'};
   recorder.start();startedAt=Date.now();setRecordingUI(true);$('recordStatus').textContent='Recording your song…';if(!$('lyricStage').hidden){syncStageLyrics();$('stageHint').textContent='Recording started. Web version does not listen for lyric matching; use manual timed scrolling or the Android app.';}$('previewBox').hidden=true;$('timer').textContent='00:00';timerHandle=setInterval(()=>$('timer').textContent=durationText((Date.now()-startedAt)/1000),250);
- }catch(e){$('recordStatus').textContent=e.name==='NotAllowedError'?'Microphone permission was blocked. Allow microphone access in Chrome settings.':'Could not start recording. Check microphone permission and try again.';if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;setRecordingUI(false)}
+ }catch(e){if(autotuneGraph){autotuneGraph.stop();autotuneGraph=null;}$('recordStatus').textContent=e.name==='NotAllowedError'?'Microphone permission was blocked. Allow microphone access in Chrome settings.':'Could not start recording. Check microphone permission and try again.';if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;setRecordingUI(false)}
 };
 $('keepTake').onclick=async()=>{if(!pendingBlob)return;try{const song=await saveCurrentSong();const take={id:makeId(),songId:song.id,songTitle:song.title,createdAt:Date.now(),duration:(Date.now()-startedAt)/1000,blob:pendingBlob,type:pendingBlob.type};await reqPromise(store('takes','readwrite').put(take));pendingBlob=null;$('previewBox').hidden=true;$('preview').removeAttribute('src');$('recordStatus').textContent='Recording saved in My Songs. ♥';$('timer').textContent=durationText(take.duration); }catch(e){$('recordStatus').textContent='Could not save this recording. Try downloading it as a backup.'}};
 $('discardTake').onclick=()=>{pendingBlob=null;$('previewBox').hidden=true;$('preview').pause();$('preview').removeAttribute('src');$('recordStatus').textContent='Recording discarded.'};
+
+function getTuneSettings(){return {mode:$('tuneMode').value,key:$('tuneKey').value,scale:$('tuneScale').value,strength:Number($('tuneStrength').value)}}
+$('tuneStrength').oninput=()=>{$('tuneStrengthValue').textContent=$('tuneStrength').value+'%'};
+$('liveAutotune').onchange=()=>{$('autotuneStatus').textContent=$('liveAutotune').checked?'Live pitch correction will be applied to your next recording.':'New recordings will be captured naturally.'};
+$('postAutotune').onclick=async()=>{if(!pendingBlob)return;const btn=$('postAutotune');btn.disabled=true;btn.textContent='Processing…';$('autotuneStatus').textContent='Creating a corrected copy. Keep this page open…';try{if(!window.toonAutotune)throw new Error('Autotune module has not loaded yet.');const corrected=await window.toonAutotune.process(pendingBlob,getTuneSettings());const song=await saveCurrentSong();const take={id:makeId(),songId:song.id,songTitle:song.title+' — Autotuned',createdAt:Date.now(),duration:(Date.now()-startedAt)/1000,blob:corrected,type:corrected.type};await reqPromise(store('takes','readwrite').put(take));$('autotuneStatus').textContent='Corrected copy saved separately. Your original take is unchanged.';refreshLibrary()}catch(e){$('autotuneStatus').textContent='Could not process this take: '+(e.message||'audio engine error');}finally{btn.disabled=false;btn.textContent='✨ Create corrected copy'}};
 async function refreshLibrary(){
  const songs=await reqPromise(store('songs').getAll());songs.sort((a,b)=>b.updatedAt-a.updatedAt);const list=$('songList');list.innerHTML='';
  if(!songs.length){const empty=document.createElement('div');empty.className='empty';empty.innerHTML='<div class="symbol">✎</div>No songs yet. Write your first song to begin.';list.append(empty)}
@@ -202,5 +223,6 @@ async function deleteTake(id){if(!confirm('Delete this recording?'))return;await
 (async()=>{try{db=await openDB();$('songStatus').textContent='Your songwriting studio is ready.';await refreshLibrary()}catch(e){$('songStatus').textContent='Local storage could not be opened. Please use Chrome and check site storage permissions.'}})();
 if('serviceWorker'in navigator&&location.protocol==='https:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}))}
 </script>
+<script type="module" src="./autotune.js"></script>
 </body>
 </html>
