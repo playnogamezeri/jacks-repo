@@ -112,6 +112,10 @@ footer{text-align:center;color:#81908d;font-size:11px;padding:24px 0 5px}
    <div><label for="tuneScale">Scale</label><select id="tuneScale"><option value="major">Major</option><option value="minor">Minor</option><option value="pentatonic">Pentatonic</option><option value="chromatic">Chromatic</option></select></div>
    <div><label for="tuneStrength">Correction strength: <span id="tuneStrengthValue">75%</span></label><input id="tuneStrength" type="range" min="0" max="100" value="75"></div>
   </div>
+  <div class="autotune-grid">
+   <div><label for="vocalPreset">Vocal modifier</label><select id="vocalPreset"><option value="clean">Natural Clean</option><option value="dreamy">Dreamy Vocal</option><option value="youngBlue">Young Blue</option><option value="warm">Warm Studio</option><option value="radio">Radio Vocal</option><option value="rnb">R&amp;B Smooth</option></select></div>
+   <div><label for="modifierAmount">Modifier amount: <span id="modifierAmountValue">70%</span></label><input id="modifierAmount" type="range" min="0" max="100" value="70"></div>
+  </div>
   <p class="muted">Headphones are recommended for live processing. Your original dry recording remains untouched.</p>
   <div class="status" id="autotuneStatus" aria-live="polite">Autotune is ready to configure.</div>
  </div>
@@ -206,8 +210,8 @@ $('recordButton').onclick=async()=>{
 $('keepTake').onclick=async()=>{if(!pendingBlob)return;try{const song=await saveCurrentSong();const take={id:makeId(),songId:song.id,songTitle:song.title,createdAt:Date.now(),duration:(Date.now()-startedAt)/1000,blob:pendingBlob,type:pendingBlob.type};await reqPromise(store('takes','readwrite').put(take));pendingBlob=null;$('previewBox').hidden=true;$('preview').removeAttribute('src');$('recordStatus').textContent='Recording saved in My Songs. ♥';$('timer').textContent=durationText(take.duration); }catch(e){$('recordStatus').textContent='Could not save this recording. Try downloading it as a backup.'}};
 $('discardTake').onclick=()=>{pendingBlob=null;$('previewBox').hidden=true;$('preview').pause();$('preview').removeAttribute('src');$('recordStatus').textContent='Recording discarded.'};
 
-function getTuneSettings(){return {mode:$('tuneMode').value,key:$('tuneKey').value,scale:$('tuneScale').value,strength:Number($('tuneStrength').value)}}
-$('tuneStrength').oninput=()=>{$('tuneStrengthValue').textContent=$('tuneStrength').value+'%'};
+function getTuneSettings(){return {mode:$('tuneMode').value,key:$('tuneKey').value,scale:$('tuneScale').value,strength:Number($('tuneStrength').value),modifier:$('vocalPreset').value,modifierAmount:Number($('modifierAmount').value)}}
+$('tuneStrength').oninput=()=>{$('tuneStrengthValue').textContent=$('tuneStrength').value+'%'};$('modifierAmount').oninput=()=>{$('modifierAmountValue').textContent=$('modifierAmount').value+'%'};
 $('liveAutotune').onchange=()=>{$('autotuneStatus').textContent=$('liveAutotune').checked?'Live pitch correction will be applied to your next recording.':'New recordings will be captured naturally.'};
 $('postAutotune').onclick=async()=>{if(!pendingBlob)return;const btn=$('postAutotune');btn.disabled=true;btn.textContent='Processing…';$('autotuneStatus').textContent='Creating a corrected copy. Keep this page open…';try{if(!window.toonAutotune)throw new Error('Autotune module has not loaded yet.');const corrected=await window.toonAutotune.process(pendingBlob,getTuneSettings());const song=await saveCurrentSong();const take={id:makeId(),songId:song.id,songTitle:song.title+' — Autotuned',createdAt:Date.now(),duration:(Date.now()-startedAt)/1000,blob:corrected,type:corrected.type};await reqPromise(store('takes','readwrite').put(take));$('autotuneStatus').textContent='Corrected copy saved separately. Your original take is unchanged.';refreshLibrary()}catch(e){$('autotuneStatus').textContent='Could not process this take: '+(e.message||'audio engine error');}finally{btn.disabled=false;btn.textContent='✨ Create corrected copy'}};
 async function refreshLibrary(){
