@@ -11,16 +11,17 @@ const MODIFIERS={
 function connectVocalModifier(ctx,input,destination,settings={}){
  const p=MODIFIERS[settings.modifier]||MODIFIERS.clean;
  const amount=Math.max(0,Math.min(1,Number(settings.modifierAmount??70)/100));
+ const bus=ctx.createGain();bus.connect(destination);
  const hp=ctx.createBiquadFilter();hp.type="highpass";hp.frequency.value=p.hp;
  const low=ctx.createBiquadFilter();low.type="lowshelf";low.frequency.value=180;low.gain.value=p.low*amount;
  const mid=ctx.createBiquadFilter();mid.type="peaking";mid.frequency.value=2400;mid.Q.value=.9;mid.gain.value=p.mid*amount;
  const high=ctx.createBiquadFilter();high.type="highshelf";high.frequency.value=7500;high.gain.value=p.high*amount;
  const comp=ctx.createDynamicsCompressor();comp.threshold.value=-22;comp.knee.value=18;comp.ratio.value=1+(p.comp-1)*amount;comp.attack.value=.008;comp.release.value=.16;
  input.connect(hp);hp.connect(low);low.connect(mid);mid.connect(high);high.connect(comp);
- const dry=ctx.createGain();dry.gain.value=1-(p.reverb*.35+p.delay*.2)*amount;comp.connect(dry);dry.connect(destination);
- if(p.reverb>0){const convolver=ctx.createConvolver(),length=Math.floor(ctx.sampleRate*1.35),impulse=ctx.createBuffer(2,length,ctx.sampleRate);for(let ch=0;ch<2;ch++){const data=impulse.getChannelData(ch);for(let i=0;i<length;i++)data[i]=(Math.random()*2-1)*Math.pow(1-i/length,3.2)}convolver.buffer=impulse;const wet=ctx.createGain();wet.gain.value=p.reverb*amount;comp.connect(convolver);convolver.connect(wet);wet.connect(destination)}
+ const dry=ctx.createGain();dry.gain.value=1-(p.reverb*.35+p.delay*.2)*amount;comp.connect(dry);dry.connect(bus);
+ if(p.reverb>0){const convolver=ctx.createConvolver(),length=Math.floor(ctx.sampleRate*1.35),impulse=ctx.createBuffer(2,length,ctx.sampleRate);for(let ch=0;ch<2;ch++){const data=impulse.getChannelData(ch);for(let i=0;i<length;i++)data[i]=(Math.random()*2-1)*Math.pow(1-i/length,3.2)}convolver.buffer=impulse;const wet=ctx.createGain();wet.gain.value=p.reverb*amount;comp.connect(convolver);convolver.connect(wet);wet.connect(bus)}
  if(p.delay>0){const delay=ctx.createDelay(.5);delay.delayTime.value=.19;const feedback=ctx.createGain();feedback.gain.value=.16*amount;const wet=ctx.createGain();wet.gain.value=p.delay*amount;comp.connect(delay);delay.connect(feedback);feedback.connect(delay);delay.connect(wet);wet.connect(destination)}
- return dry;
+ return bus;
 }
 
 // Pitch correction is built from SoundTouchJS AudioWorklet pitch shifting plus
