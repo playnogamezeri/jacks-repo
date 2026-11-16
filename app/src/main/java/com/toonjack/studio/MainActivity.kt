@@ -18,8 +18,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -251,7 +251,7 @@ private fun ToonJackApp() {
     )) {
         Surface(modifier = Modifier.fillMaxSize(), color = Background) {
             Column(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 18.dp),
+                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -379,8 +379,8 @@ private fun ToonJackApp() {
                         }
                     }
                 } else {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
-                        items(recordings, key = { it.name }) { file ->
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        recordings.forEach { file ->
                             Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(15.dp)) {
                                 Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -487,7 +487,6 @@ private fun ToonJackApp() {
                                     }
                                 }
                             }
-                        }
                     }
                 }
                 Text("Original takes are preserved. Processed exports are saved as separate files.", color = Muted, fontSize = 10.sp)
