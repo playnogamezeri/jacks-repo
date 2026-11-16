@@ -15,6 +15,31 @@ import kotlin.math.max
  * Audio is downmixed to mono for the current vocal-processing chain.
  */
 object OfflineAudioRenderer {
+    fun renderAutoTune(
+        source: File,
+        destination: File,
+        rootMidiNote: Int,
+        scale: ToonJackDsp.Scale,
+        strength: Float
+    ) {
+        require(source.exists() && source.length() > 0L) { "Source recording is missing or empty." }
+        require(source.canonicalFile != destination.canonicalFile) { "Output must be a separate file." }
+        destination.parentFile?.mkdirs()
+        val decoded = decodeToMono(source)
+        require(decoded.samples.isNotEmpty()) { "No audio samples were decoded." }
+        val tuned = PsolaAutoTune(
+            sampleRate = decoded.sampleRate.toFloat(),
+            rootMidiNote = rootMidiNote,
+            scale = scale,
+            strength = strength.coerceIn(0.35f, 0.85f),
+            minHz = 80f,
+            maxHz = 700f,
+            clarityThreshold = 0.82f,
+            maxCorrectionCents = 200f
+        ).process(decoded.samples)
+        encodeMonoAac(tuned.samples, decoded.sampleRate, destination)
+    }
+
     fun renderDreamVoice(source: File, destination: File) {
         require(source.exists() && source.length() > 0L) { "Source recording is missing or empty." }
         require(source.canonicalFile != destination.canonicalFile) { "Output must be a separate file." }
