@@ -4,11 +4,6 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.media.MediaPlayer
 import android.media.MediaRecorder
-import android.media.audiofx.AudioEffect
-import android.media.audiofx.BassBoost
-import android.media.audiofx.Equalizer
-import android.media.audiofx.PresetReverb
-import android.media.audiofx.Virtualizer
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -67,7 +62,6 @@ private val Muted = Color(0xFF9CB2AE)
 private val Teal = Color(0xFF20B5A8)
 private val Panel = Color(0xFF172724)
 private val Background = Color(0xFF0B1413)
-private val VocalPresets = listOf("Natural Clean", "Dreamy Vocal", "Young Blue", "Warm Studio", "Radio Vocal", "R&B Smooth")
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -87,7 +81,6 @@ private fun ToonJackApp() {
     }
     var recorder by remember { mutableStateOf<MediaRecorder?>(null) }
     var player by remember { mutableStateOf<MediaPlayer?>(null) }
-    var audioEffects by remember { mutableStateOf<List<AudioEffect>>(emptyList()) }
     var recordingFile by remember { mutableStateOf<File?>(null) }
     var isRecording by remember { mutableStateOf(false) }
     var recordingStarted by remember { mutableStateOf(0L) }
@@ -97,7 +90,6 @@ private fun ToonJackApp() {
     var playerPosition by remember { mutableStateOf(0) }
     var playerDuration by remember { mutableStateOf(0) }
     var deleteTarget by remember { mutableStateOf<File?>(null) }
-    var selectedPreset by remember { mutableStateOf("Natural Clean") }
     var message by remember { mutableStateOf("Your private recording space") }
     var renderingFileName by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
@@ -109,11 +101,6 @@ private fun ToonJackApp() {
     fun refreshRecordings() {
         recordings.clear()
         recordings.addAll(recordingsDir.listFiles()?.filter { it.extension == "m4a" }?.sortedByDescending { it.lastModified() } ?: emptyList())
-    }
-
-    fun releaseEffects() {
-        audioEffects.forEach { try { it.release() } catch (_: Exception) {} }
-        audioEffects = emptyList()
     }
 
     fun startRecording() {
@@ -164,7 +151,7 @@ private fun ToonJackApp() {
         try {
             player?.release()
             player = null
-            releaseEffects()
+
             val nextPlayer = MediaPlayer()
             nextPlayer.setDataSource(file.absolutePath)
             nextPlayer.setOnCompletionListener {
@@ -178,7 +165,7 @@ private fun ToonJackApp() {
             playerPosition = 0
             player = nextPlayer
             playingName = file.name
-            audioEffects = createPlaybackEffects(nextPlayer.audioSessionId, selectedPreset)
+
             nextPlayer.start()
             isPlaying = true
         } catch (error: Exception) {
@@ -193,19 +180,11 @@ private fun ToonJackApp() {
     fun stopPlayback() {
         try { player?.release() } catch (_: Exception) {}
         player = null
-        releaseEffects()
+
         playingName = null
         isPlaying = false
         playerPosition = 0
         playerDuration = 0
-    }
-
-    fun choosePreset(preset: String) {
-        selectedPreset = preset
-        if (player != null) {
-            releaseEffects()
-            try { audioEffects = createPlaybackEffects(player!!.audioSessionId, preset) } catch (_: Exception) {}
-        }
     }
 
     DisposableEffect(Unit) {
@@ -213,7 +192,7 @@ private fun ToonJackApp() {
             try { recorder?.stop() } catch (_: Exception) {}
             try { recorder?.release() } catch (_: Exception) {}
             try { player?.release() } catch (_: Exception) {}
-            audioEffects.forEach { try { it.release() } catch (_: Exception) {} }
+
         }
     }
 
@@ -261,24 +240,25 @@ private fun ToonJackApp() {
     )) {
         Surface(modifier = Modifier.fillMaxSize(), color = Background) {
             Column(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 20.dp),
+                modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("TOON JACK", color = Teal, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 3.sp)
-                        Text("Private Studio", color = Ink, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                        Text("TOON JACK  /  PRIVATE STUDIO", color = Teal, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                        Text("Make something real.", color = Ink, fontSize = 27.sp, fontWeight = FontWeight.Bold)
+                        Text("Your voice. Your songs. Your space.", color = Muted, fontSize = 12.sp)
                     }
                     Text("🎙️", fontSize = 34.sp)
                 }
 
                 Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(24.dp)) {
                     Column(Modifier.fillMaxWidth().padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("RECORDING SESSION", color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                        Text("RECORDING STUDIO", color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                         Spacer(Modifier.height(12.dp))
-                        Text(if (isRecording) "●" else "◉", color = if (isRecording) Color(0xFFFF6666) else Teal, fontSize = 44.sp)
-                        Text(formatTime(elapsed), color = Ink, fontSize = 36.sp, fontWeight = FontWeight.Light)
-                        Text(message, color = Muted, fontSize = 12.sp)
+                        Text(formatTime(elapsed), color = Ink, fontSize = 48.sp, fontWeight = FontWeight.Light)
+                        Text(if (isRecording) "Recording in progress" else "Session timer", color = Muted, fontSize = 12.sp)
+                        Text(message, color = Muted, fontSize = 11.sp)
                         Spacer(Modifier.height(14.dp))
                         Button(
                             onClick = {
@@ -320,29 +300,6 @@ private fun ToonJackApp() {
                                 }) { Text(if (isPlaying) "Pause" else "Resume") }
                                 OutlinedButton(onClick = { try { player?.seekTo(0); player?.start(); isPlaying = true; playerPosition = 0 } catch (_: Exception) {} }) { Text("Restart") }
                                 OutlinedButton(onClick = { stopPlayback() }) { Text("Close player") }
-                            }
-                        }
-                    }
-                }
-
-                Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(18.dp)) {
-                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("VOCAL PLAYBACK TONE", color = Teal, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                        Text("Choose a listening character for the selected take. These effects are applied during playback, not baked into or substituted for your original recording.", color = Muted, fontSize = 11.sp)
-                        VocalPresets.chunked(3).forEach { rowPresets ->
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                                rowPresets.forEach { preset ->
-                                    if (preset == selectedPreset) {
-                                        Button(onClick = { choosePreset(preset) }, modifier = Modifier.weight(1f), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp, vertical = 7.dp)) {
-                                            Text(preset, fontSize = 10.sp, lineHeight = 12.sp)
-                                        }
-                                    } else {
-                                        OutlinedButton(onClick = { choosePreset(preset) }, modifier = Modifier.weight(1f), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp, vertical = 7.dp)) {
-                                            Text(preset, fontSize = 10.sp, lineHeight = 12.sp)
-                                        }
-                                    }
-                                }
-                                repeat(3 - rowPresets.size) { Spacer(Modifier.weight(1f)) }
                             }
                         }
                     }
@@ -435,55 +392,6 @@ private fun ToonJackApp() {
             }
         }
     }
-}
-
-private fun createPlaybackEffects(sessionId: Int, preset: String): List<AudioEffect> {
-    val effects = mutableListOf<AudioEffect>()
-    try {
-        val eq = Equalizer(0, sessionId)
-        eq.enabled = true
-        val bands = eq.numberOfBands.toInt()
-        val range = eq.bandLevelRange
-        val low = range[0].toInt()
-        val high = range[1].toInt()
-        val profile = when (preset) {
-            "Dreamy Vocal" -> listOf(-2, 1, 2, 3, 1)
-            "Young Blue" -> listOf(-1, 1, 3, 4, 2)
-            "Warm Studio" -> listOf(3, 2, 0, -1, -2)
-            "Radio Vocal" -> listOf(1, -1, 2, 4, 1)
-            "R&B Smooth" -> listOf(2, 2, 1, 2, 0)
-            else -> listOf(0, 0, 0, 0, 0)
-        }
-        for (i in 0 until bands) {
-            val sourceIndex = if (bands <= 1) 2 else (i * 4 / (bands - 1)).coerceIn(0, 4)
-            val level = (profile[sourceIndex] * 100).coerceIn(low, high)
-            eq.setBandLevel(i.toShort(), level.toShort())
-        }
-        effects.add(eq)
-    } catch (_: Exception) {}
-    try {
-        val reverb = PresetReverb(0, sessionId)
-        reverb.preset = when (preset) {
-            "Dreamy Vocal" -> PresetReverb.PRESET_LARGEHALL
-            "Warm Studio" -> PresetReverb.PRESET_MEDIUMROOM
-            else -> PresetReverb.PRESET_NONE
-        }
-        reverb.enabled = true
-        effects.add(reverb)
-    } catch (_: Exception) {}
-    try {
-        val bass = BassBoost(0, sessionId)
-        bass.setStrength(if (preset == "Warm Studio" || preset == "R&B Smooth") 350 else 0)
-        bass.enabled = true
-        effects.add(bass)
-    } catch (_: Exception) {}
-    try {
-        val width = Virtualizer(0, sessionId)
-        width.setStrength(if (preset == "Dreamy Vocal" || preset == "Young Blue") 250 else 0)
-        width.enabled = true
-        effects.add(width)
-    } catch (_: Exception) {}
-    return effects
 }
 
 private fun formatTime(seconds: Long): String = "%02d:%02d".format(seconds / 60, seconds % 60)
