@@ -96,6 +96,12 @@ private fun ToonJackApp() {
     var autoTuneStrength by remember { mutableStateOf(0.65f) }
     var autoTuneRoot by remember { mutableStateOf(0) }
     var autoTuneMajor by remember { mutableStateOf(true) }
+    var dreamWarmth by remember { mutableStateOf(0.28f) }
+    var dreamSoftness by remember { mutableStateOf(0.42f) }
+    var dreamAir by remember { mutableStateOf(0.32f) }
+    var dreamCompression by remember { mutableStateOf(0.34f) }
+    var dreamDeEss by remember { mutableStateOf(0.35f) }
+    var dreamAmbience by remember { mutableStateOf(0.16f) }
     val noteNames = listOf("C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B")
     val coroutineScope = rememberCoroutineScope()
 
@@ -342,6 +348,24 @@ private fun ToonJackApp() {
                     }
                 }
 
+                Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(20.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Text("DREAM VOICE  /  TONE STUDIO", color = Teal, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                        Text("Shape the tone of your processed copy", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                        Text("These controls adjust tonal polish and ambience. They do not change vocal identity or formants.", color = Muted, fontSize = 10.sp)
+                        ToneControl("Warmth", dreamWarmth) { dreamWarmth = it }
+                        ToneControl("Softness", dreamSoftness) { dreamSoftness = it }
+                        ToneControl("Air", dreamAir) { dreamAir = it }
+                        ToneControl("Compression", dreamCompression) { dreamCompression = it }
+                        ToneControl("De-essing", dreamDeEss) { dreamDeEss = it }
+                        ToneControl("Ambience", dreamAmbience) { dreamAmbience = it }
+                        OutlinedButton(onClick = {
+                            dreamWarmth = 0.28f; dreamSoftness = 0.42f; dreamAir = 0.32f
+                            dreamCompression = 0.34f; dreamDeEss = 0.35f; dreamAmbience = 0.16f
+                        }, modifier = Modifier.fillMaxWidth()) { Text("Reset Dream Voice") }
+                    }
+                }
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("YOUR TAKES", color = Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                     Text("${recordings.size} saved", color = Muted, fontSize = 12.sp)
@@ -438,7 +462,7 @@ private fun ToonJackApp() {
                                                                     output = File(recordingsDir, "${base}_DreamVoice_${suffix}.m4a")
                                                                     suffix++
                                                                 }
-                                                                com.toonjack.studio.audio.OfflineAudioRenderer.renderDreamVoice(file, output)
+                                                                com.toonjack.studio.audio.OfflineAudioRenderer.renderDreamVoice(file, output, dreamWarmth, dreamSoftness, dreamAir, dreamCompression, dreamDeEss, dreamAmbience)
                                                                 Result.success(output)
                                                             } catch (error: Exception) {
                                                                 Result.failure<File>(error)
@@ -472,6 +496,6 @@ private fun ToonJackApp() {
     }
 }
 
-private fun formatTime(seconds: Long): String = "%02d:%02d".format(seconds / 60, seconds % 60)
+@Composable\nprivate fun ToneControl(label: String, value: Float, onValueChange: (Float) -> Unit) {\n    Row(verticalAlignment = Alignment.CenterVertically) {\n        Text(label, color = Muted, fontSize = 11.sp, modifier = Modifier.weight(1f))\n        Text("${(value * 100).toInt()}%", color = Teal, fontSize = 11.sp, fontWeight = FontWeight.Bold)\n    }\n    Slider(value = value, onValueChange = onValueChange, valueRange = 0f..1f)\n}\n\nprivate fun formatTime(seconds: Long): String = "%02d:%02d".format(seconds / 60, seconds % 60)
 private fun formatMillis(milliseconds: Int): String = "%02d:%02d".format(milliseconds / 60000, (milliseconds / 1000) % 60)
 private fun formatBytes(bytes: Long): String = if (bytes < 1024) "$bytes B" else String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024.0))
