@@ -92,6 +92,7 @@ private fun ToonJackApp() {
     var deleteTarget by remember { mutableStateOf<File?>(null) }
     var message by remember { mutableStateOf("Your private recording space") }
     var renderingFileName by remember { mutableStateOf<String?>(null) }
+    var autoTuneEnabled by remember { mutableStateOf(true) }
     var autoTuneStrength by remember { mutableStateOf(0.65f) }
     var autoTuneRoot by remember { mutableStateOf(0) }
     var autoTuneMajor by remember { mutableStateOf(true) }
@@ -312,7 +313,15 @@ private fun ToonJackApp() {
                 Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(20.dp)) {
                     Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                         Text("AUTOTUNE  /  TEEN POP TENOR", color = Teal, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                        Text("Natural, expressive correction", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("Natural, expressive correction", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                                Text(if (autoTuneEnabled) "Autotune enabled" else "Autotune bypassed", color = if (autoTuneEnabled) Teal else Muted, fontSize = 10.sp)
+                            }
+                            OutlinedButton(onClick = { autoTuneEnabled = !autoTuneEnabled }) {
+                                Text(if (autoTuneEnabled) "ON" else "OFF")
+                            }
+                        }
                         Text("Choose the song key and scale. Export a tuned copy from any take below; your dry original stays untouched.", color = Muted, fontSize = 11.sp)
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("KEY", color = Muted, fontSize = 10.sp)
@@ -375,7 +384,7 @@ private fun ToonJackApp() {
                                         }
                                         OutlinedButton(
                                             onClick = {
-                                                if (renderingFileName == null) {
+                                                if (renderingFileName == null && autoTuneEnabled) {
                                                     renderingFileName = file.name
                                                     message = "Tuning vocal… keep Toon Jack open."
                                                     val selectedRoot = autoTuneRoot
@@ -411,7 +420,7 @@ private fun ToonJackApp() {
                                                     }
                                                 }
                                             },
-                                            enabled = renderingFileName == null,
+                                            enabled = renderingFileName == null && autoTuneEnabled,
                                             modifier = Modifier.weight(1.2f)
                                         ) { Text("Autotune", fontSize = 11.sp) }
                                         OutlinedButton(
