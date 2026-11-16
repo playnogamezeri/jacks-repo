@@ -5,6 +5,8 @@ import android.content.pm.PackageManager
 import android.media.MediaPlayer
 import android.media.MediaRecorder
 import android.net.Uri
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -45,6 +47,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -116,6 +119,9 @@ private fun ToonJackApp() {
     var backingDuration by remember { mutableStateOf(0) }
     var backingLoop by remember { mutableStateOf(false) }
     var backingStatus by remember { mutableStateOf("Import an instrumental or backing track from your phone.") }
+    var youtubeUrl by remember { mutableStateOf("") }
+    var youtubeVideoId by remember { mutableStateOf<String?>(null) }
+    var youtubeError by remember { mutableStateOf<String?>(null) }
     val backingPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) {
             coroutineScope.launch {
@@ -389,6 +395,24 @@ private fun ToonJackApp() {
                                 Text("Loop instrumental", color = Muted, fontSize = 11.sp, modifier = Modifier.weight(1f))
                                 Switch(checked = backingLoop, onCheckedChange = { backingLoop = it })
                             }
+                        }
+                    }
+                }
+
+                Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(20.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("YOUTUBE BACKING TRACK", color = Teal, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                        Text("Paste a YouTube video link to play it inside Toon Jack.", color = Muted, fontSize = 11.sp)
+                        OutlinedTextField(value = youtubeUrl, onValueChange = { youtubeUrl = it; youtubeError = null }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("YouTube URL") }, placeholder = { Text("https://www.youtube.com/watch?v=...") })
+                        Button(onClick = {
+                            val id = extractYouTubeVideoId(youtubeUrl)
+                            if (id == null) { youtubeVideoId = null; youtubeError = "That link is not a supported YouTube video URL." }
+                            else { youtubeVideoId = id; youtubeError = null }
+                        }, modifier = Modifier.fillMaxWidth()) { Text("LOAD YOUTUBE VIDEO") }
+                        youtubeError?.let { Text(it, color = Color(0xFFFF9B9B), fontSize = 11.sp) }
+                        if (youtubeVideoId != null) {
+                            YouTubeEmbed(videoId = youtubeVideoId!!)
+                            Text("Playback is provided by YouTube. Video availability and ads follow YouTube.", color = Muted, fontSize = 10.sp)
                         }
                     }
                 }
@@ -745,3 +769,25 @@ private fun ToneControl(label: String, value: Float, onValueChange: (Float) -> U
 private fun formatTime(seconds: Long): String = "%02d:%02d".format(seconds / 60, seconds % 60)
 private fun formatMillis(milliseconds: Int): String = "%02d:%02d".format(milliseconds / 60000, (milliseconds / 1000) % 60)
 private fun formatBytes(bytes: Long): String = if (bytes < 1024) "$bytes B" else String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024.0))
+
+private fun extractYouTubeVideoId(input: String): String? {
+    val pattern = Regex("(?:youtu[.]be/|(?:www[.]|m[.] )?youtube(?:-nocookie)?[.]com/(?:.*[?&]v=|embed/|shorts/|live/))([A-Za-z0-9_-]{11})".replace("m[.] ", "m[.]"))
+    return pattern.find(input.trim())?.groupValues?.getOrNull(1)
+}
+
+@Composable
+private fun YouTubeEmbed(videoId: String) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val webView = remember(videoId) {
+        WebView(context).apply {
+            settings.javaScriptEnabled = true
+            settings.domStorageEnabled = true
+            settings.mediaPlaybackRequiresUserGesture = true
+            webViewClient = WebViewClient()
+            val html = "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1, maximum-scale=1'><style>html,body{margin:0;padding:0;background:#000;height:100%;overflow:hidden}iframe{width:100%;height:100%;border:0}</style></head><body><iframe src='https://www.youtube-nocookie.com/embed/" + videoId + "?playsinline=1&rel=0' title='YouTube backing track' allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share' allowfullscreen></iframe></body></html>"
+            loadDataWithBaseURL("https://www.youtube-nocookie.com", html, "text/html", "UTF-8", null)
+        }
+    }
+    DisposableEffect(webView) { onDispose { webView.stopLoading(); webView.destroy() } }
+    AndroidView(factory = { webView }, modifier = Modifier.fillMaxWidth().height(210.dp))
+}
