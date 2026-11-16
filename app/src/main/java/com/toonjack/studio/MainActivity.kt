@@ -4,13 +4,17 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.media.MediaPlayer
 import android.media.MediaRecorder
+import android.media.audiofx.AudioEffect
+import android.media.audiofx.BassBoost
+import android.media.audiofx.Equalizer
+import android.media.audiofx.PresetReverb
+import android.media.audiofx.Virtualizer
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,14 +25,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
@@ -58,6 +63,7 @@ private val Muted = Color(0xFF9CB2AE)
 private val Teal = Color(0xFF20B5A8)
 private val Panel = Color(0xFF172724)
 private val Background = Color(0xFF0B1413)
+private val VocalPresets = listOf("Natural Clean", "Dreamy Vocal", "Young Blue", "Warm Studio", "Radio Vocal", "R&B Smooth")
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -69,27 +75,39 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun ToonJackApp() {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val recordingsDir = remember {
-        File(context.filesDir, "recordings").apply { mkdirs() }
+    val recordingsDir = remember { File(context.filesDir, "recordings").apply { mkdirs() } }
+    val recordings = remember {
+        mutableStateListOf<File>().apply {
+            addAll(recordingsDir.listFiles()?.filter { it.extension == "m4a" }?.sortedByDescending { it.lastModified() } ?: emptyList())
+        }
     }
-    val recordings = remember { mutableStateListOf<File>().apply { addAll(recordingsDir.listFiles()?.filter { it.extension == "m4a" }?.sortedByDescending { it.lastModified() } ?: emptyList()) } }
     var recorder by remember { mutableStateOf<MediaRecorder?>(null) }
     var player by remember { mutableStateOf<MediaPlayer?>(null) }
+    var audioEffects by remember { mutableStateOf<List<AudioEffect>>(emptyList()) }
     var recordingFile by remember { mutableStateOf<File?>(null) }
     var isRecording by remember { mutableStateOf(false) }
     var recordingStarted by remember { mutableStateOf(0L) }
     var elapsed by remember { mutableStateOf(0L) }
     var playingName by remember { mutableStateOf<String?>(null) }
+    var isPlaying by remember { mutableStateOf(false) }
+    var playerPosition by remember { mutableStateOf(0) }
+    var playerDuration by remember { mutableStateOf(0) }
+    var deleteTarget by remember { mutableStateOf<File?>(null) }
+    var selectedPreset by remember { mutableStateOf("Natural Clean") }
     var message by remember { mutableStateOf("Your private recording space") }
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) message = "Microphone ready. Tap Record to begin."
-        else message = "Microphone permission is needed to record."
+        message = if (granted) "Microphone ready. Tap Record to begin." else "Microphone permission is needed to record."
     }
 
     fun refreshRecordings() {
         recordings.clear()
         recordings.addAll(recordingsDir.listFiles()?.filter { it.extension == "m4a" }?.sortedByDescending { it.lastModified() } ?: emptyList())
+    }
+
+    fun releaseEffects() {
+        audioEffects.forEach { try { it.release() } catch (_: Exception) {} }
+        audioEffects = emptyList()
     }
 
     fun startRecording() {
@@ -112,7 +130,7 @@ private fun ToonJackApp() {
             isRecording = true
             message = "Recording locally on this phone"
         } catch (error: Exception) {
-            recorder?.release()
+            try { recorder?.release() } catch (_: Exception) {}
             recorder = null
             isRecording = false
             message = "Could not start recording: ${error.localizedMessage ?: "Audio unavailable"}"
@@ -139,27 +157,57 @@ private fun ToonJackApp() {
     fun play(file: File) {
         try {
             player?.release()
-            player = MediaPlayer().apply {
-                setDataSource(file.absolutePath)
-                setOnCompletionListener {
-                    it.release()
-                    player = null
-                    playingName = null
-                }
-                prepare()
-                start()
+            player = null
+            releaseEffects()
+            val nextPlayer = MediaPlayer()
+            nextPlayer.setDataSource(file.absolutePath)
+            nextPlayer.setOnCompletionListener {
+                it.seekTo(0)
+                it.pause()
+                isPlaying = false
+                playerPosition = 0
             }
+            nextPlayer.prepare()
+            playerDuration = nextPlayer.duration.coerceAtLeast(0)
+            playerPosition = 0
+            player = nextPlayer
             playingName = file.name
+            audioEffects = createPlaybackEffects(nextPlayer.audioSessionId, selectedPreset)
+            nextPlayer.start()
+            isPlaying = true
         } catch (error: Exception) {
+            player?.release()
+            player = null
+            playingName = null
+            isPlaying = false
             message = "Playback failed: ${error.localizedMessage ?: "Unknown error"}"
+        }
+    }
+
+    fun stopPlayback() {
+        try { player?.release() } catch (_: Exception) {}
+        player = null
+        releaseEffects()
+        playingName = null
+        isPlaying = false
+        playerPosition = 0
+        playerDuration = 0
+    }
+
+    fun choosePreset(preset: String) {
+        selectedPreset = preset
+        if (player != null) {
+            releaseEffects()
+            try { audioEffects = createPlaybackEffects(player!!.audioSessionId, preset) } catch (_: Exception) {}
         }
     }
 
     DisposableEffect(Unit) {
         onDispose {
             try { recorder?.stop() } catch (_: Exception) {}
-            recorder?.release()
-            player?.release()
+            try { recorder?.release() } catch (_: Exception) {}
+            try { player?.release() } catch (_: Exception) {}
+            audioEffects.forEach { try { it.release() } catch (_: Exception) {} }
         }
     }
 
@@ -170,14 +218,45 @@ private fun ToonJackApp() {
         }
     }
 
+    LaunchedEffect(player, isPlaying) {
+        while (player != null && isPlaying) {
+            try { playerPosition = player?.currentPosition ?: 0 } catch (_: Exception) {}
+            delay(200)
+        }
+    }
+
+    if (deleteTarget != null) {
+        AlertDialog(
+            onDismissRequest = { deleteTarget = null },
+            title = { Text("Delete this recording?") },
+            text = { Text("This permanently deletes ${deleteTarget?.nameWithoutExtension ?: "this take"} from Toon Jack on this phone. This cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val file = deleteTarget
+                        if (file != null) {
+                            if (playingName == file.name) stopPlayback()
+                            val deleted = try { file.delete() } catch (_: Exception) { false }
+                            if (deleted) message = "Recording deleted" else message = "Could not delete this recording"
+                            refreshRecordings()
+                        }
+                        deleteTarget = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB84D55))
+                ) { Text("Delete permanently") }
+            },
+            dismissButton = { OutlinedButton(onClick = { deleteTarget = null }) { Text("Cancel") } }
+        )
+    }
+
     MaterialTheme(colorScheme = darkColorScheme(
         primary = Teal, onPrimary = Color(0xFF00201D),
         background = Background, surface = Panel, onSurface = Ink
     )) {
         Surface(modifier = Modifier.fillMaxSize(), color = Background) {
             Column(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 22.dp, vertical = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp)
+                modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
@@ -188,25 +267,77 @@ private fun ToonJackApp() {
                 }
 
                 Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(24.dp)) {
-                    Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(Modifier.fillMaxWidth().padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("RECORDING SESSION", color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
-                        Spacer(Modifier.height(18.dp))
-                        Text(if (isRecording) "●" else "◉", color = if (isRecording) Color(0xFFFF6666) else Teal, fontSize = 48.sp)
-                        Text(formatTime(elapsed), color = Ink, fontSize = 38.sp, fontWeight = FontWeight.Light)
-                        Spacer(Modifier.height(8.dp))
-                        Text(message, color = Muted, fontSize = 13.sp)
-                        Spacer(Modifier.height(20.dp))
+                        Spacer(Modifier.height(12.dp))
+                        Text(if (isRecording) "●" else "◉", color = if (isRecording) Color(0xFFFF6666) else Teal, fontSize = 44.sp)
+                        Text(formatTime(elapsed), color = Ink, fontSize = 36.sp, fontWeight = FontWeight.Light)
+                        Text(message, color = Muted, fontSize = 12.sp)
+                        Spacer(Modifier.height(14.dp))
                         Button(
                             onClick = {
                                 if (isRecording) stopRecording()
                                 else if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) startRecording()
                                 else permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                             },
-                            modifier = Modifier.fillMaxWidth().height(58.dp),
+                            modifier = Modifier.fillMaxWidth().height(54.dp),
                             shape = RoundedCornerShape(18.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = if (isRecording) Color(0xFFB84D55) else Teal)
-                        ) {
-                            Text(if (isRecording) "STOP & SAVE TAKE" else "●  START RECORDING", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        ) { Text(if (isRecording) "STOP & SAVE TAKE" else "●  START RECORDING", fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+                    }
+                }
+
+                if (playingName != null) {
+                    Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(18.dp)) {
+                        Column(Modifier.fillMaxWidth().padding(14.dp)) {
+                            Text("NOW PLAYING", color = Teal, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                            Text(playingName!!.removeSuffix(".m4a"), color = Ink, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                            Slider(
+                                value = playerPosition.coerceIn(0, playerDuration.coerceAtLeast(1)).toFloat(),
+                                onValueChange = { value ->
+                                    playerPosition = value.toInt()
+                                    try { player?.seekTo(playerPosition) } catch (_: Exception) {}
+                                },
+                                valueRange = 0f..playerDuration.coerceAtLeast(1).toFloat(),
+                                enabled = playerDuration > 0
+                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(formatMillis(playerPosition), color = Muted, fontSize = 11.sp, modifier = Modifier.weight(1f))
+                                Text(formatMillis(playerDuration), color = Muted, fontSize = 11.sp)
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Button(onClick = {
+                                    try {
+                                        if (isPlaying) player?.pause() else player?.start()
+                                        isPlaying = !isPlaying
+                                    } catch (_: Exception) {}
+                                }) { Text(if (isPlaying) "Pause" else "Resume") }
+                                OutlinedButton(onClick = { try { player?.seekTo(0); player?.start(); isPlaying = true; playerPosition = 0 } catch (_: Exception) {} }) { Text("Restart") }
+                                OutlinedButton(onClick = { stopPlayback() }) { Text("Close player") }
+                            }
+                        }
+                    }
+                }
+
+                Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(18.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("VOCAL PLAYBACK TONE", color = Teal, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                        Text("Choose a listening character for the selected take. These effects are applied during playback, not baked into or substituted for your original recording.", color = Muted, fontSize = 11.sp)
+                        VocalPresets.chunked(3).forEach { rowPresets ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                                rowPresets.forEach { preset ->
+                                    if (preset == selectedPreset) {
+                                        Button(onClick = { choosePreset(preset) }, modifier = Modifier.weight(1f), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp, vertical = 7.dp)) {
+                                            Text(preset, fontSize = 10.sp, lineHeight = 12.sp)
+                                        }
+                                    } else {
+                                        OutlinedButton(onClick = { choosePreset(preset) }, modifier = Modifier.weight(1f), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp, vertical = 7.dp)) {
+                                            Text(preset, fontSize = 10.sp, lineHeight = 12.sp)
+                                        }
+                                    }
+                                }
+                                repeat(3 - rowPresets.size) { Spacer(Modifier.weight(1f)) }
+                            }
                         }
                     }
                 }
@@ -218,33 +349,92 @@ private fun ToonJackApp() {
 
                 if (recordings.isEmpty()) {
                     Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(18.dp)) {
-                        Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("♫", color = Teal, fontSize = 30.sp)
-                            Text("Your recordings will appear here", color = Muted, fontSize = 13.sp)
+                        Column(Modifier.fillMaxWidth().padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("♫", color = Teal, fontSize = 28.sp)
+                            Text("Your recordings will appear here", color = Muted, fontSize = 12.sp)
                         }
                     }
                 } else {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(9.dp), modifier = Modifier.weight(1f)) {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
                         items(recordings, key = { it.name }) { file ->
                             Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(15.dp)) {
-                                Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Column(Modifier.weight(1f)) {
-                                        Text(file.nameWithoutExtension.replace("ToonJack_", ""), color = Ink, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                                        Text(formatBytes(file.length()), color = Muted, fontSize = 11.sp)
+                                        Text(file.nameWithoutExtension.replace("ToonJack_", ""), color = Ink, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                        Text(formatBytes(file.length()), color = Muted, fontSize = 10.sp)
                                     }
-                                    OutlinedButton(onClick = { if (playingName == file.name) { player?.pause(); player?.seekTo(0); player?.release(); player = null; playingName = null } else play(file) }) {
-                                        Text(if (playingName == file.name) "Stop" else "Play")
-                                    }
+                                    OutlinedButton(onClick = {
+                                        if (playingName == file.name) {
+                                            if (isPlaying) {
+                                                player?.pause()
+                                                isPlaying = false
+                                            } else {
+                                                player?.start()
+                                                isPlaying = true
+                                            }
+                                        } else play(file)
+                                    }) { Text(if (playingName == file.name) if (isPlaying) "Pause" else "Resume" else "Play") }
+                                    OutlinedButton(onClick = { deleteTarget = file }) { Text("Delete", color = Color(0xFFFF8585)) }
                                 }
                             }
                         }
                     }
                 }
-                Text("Original takes stay on this device. Vocal effects are coming next.", color = Muted, fontSize = 11.sp)
+                Text("Dry original takes are preserved. Autotune and rendered effect exports are the next processing-engine milestone.", color = Muted, fontSize = 10.sp)
             }
         }
     }
 }
 
+private fun createPlaybackEffects(sessionId: Int, preset: String): List<AudioEffect> {
+    val effects = mutableListOf<AudioEffect>()
+    try {
+        val eq = Equalizer(0, sessionId)
+        eq.enabled = true
+        val bands = eq.numberOfBands.toInt()
+        val range = eq.bandLevelRange
+        val low = range[0].toInt()
+        val high = range[1].toInt()
+        val profile = when (preset) {
+            "Dreamy Vocal" -> listOf(-2, 1, 2, 3, 1)
+            "Young Blue" -> listOf(-1, 1, 3, 4, 2)
+            "Warm Studio" -> listOf(3, 2, 0, -1, -2)
+            "Radio Vocal" -> listOf(1, -1, 2, 4, 1)
+            "R&B Smooth" -> listOf(2, 2, 1, 2, 0)
+            else -> listOf(0, 0, 0, 0, 0)
+        }
+        for (i in 0 until bands) {
+            val sourceIndex = if (bands <= 1) 2 else (i * 4 / (bands - 1)).coerceIn(0, 4)
+            val level = (profile[sourceIndex] * 100).coerceIn(low, high)
+            eq.setBandLevel(i.toShort(), level.toShort())
+        }
+        effects.add(eq)
+    } catch (_: Exception) {}
+    try {
+        val reverb = PresetReverb(0, sessionId)
+        reverb.preset = when (preset) {
+            "Dreamy Vocal" -> PresetReverb.PRESET_LARGEHALL
+            "Warm Studio" -> PresetReverb.PRESET_MEDIUMROOM
+            else -> PresetReverb.PRESET_NONE
+        }
+        reverb.enabled = true
+        effects.add(reverb)
+    } catch (_: Exception) {}
+    try {
+        val bass = BassBoost(0, sessionId)
+        bass.setStrength(if (preset == "Warm Studio" || preset == "R&B Smooth") 350 else 0)
+        bass.enabled = true
+        effects.add(bass)
+    } catch (_: Exception) {}
+    try {
+        val width = Virtualizer(0, sessionId)
+        width.setStrength(if (preset == "Dreamy Vocal" || preset == "Young Blue") 250 else 0)
+        width.enabled = true
+        effects.add(width)
+    } catch (_: Exception) {}
+    return effects
+}
+
 private fun formatTime(seconds: Long): String = "%02d:%02d".format(seconds / 60, seconds % 60)
+private fun formatMillis(milliseconds: Int): String = "%02d:%02d".format(milliseconds / 60000, (milliseconds / 1000) % 60)
 private fun formatBytes(bytes: Long): String = if (bytes < 1024) "$bytes B" else String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024.0))
