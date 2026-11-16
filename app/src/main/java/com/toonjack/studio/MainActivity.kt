@@ -92,6 +92,10 @@ private fun ToonJackApp() {
     var deleteTarget by remember { mutableStateOf<File?>(null) }
     var message by remember { mutableStateOf("Your private recording space") }
     var renderingFileName by remember { mutableStateOf<String?>(null) }
+    var autoTuneStrength by remember { mutableStateOf(0.65f) }
+    var autoTuneRoot by remember { mutableStateOf(0) }
+    var autoTuneMajor by remember { mutableStateOf(true) }
+    val noteNames = listOf("C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B")
     val coroutineScope = rememberCoroutineScope()
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -305,6 +309,30 @@ private fun ToonJackApp() {
                     }
                 }
 
+                Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(20.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                        Text("AUTOTUNE  /  TEEN POP TENOR", color = Teal, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                        Text("Natural, expressive correction", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Choose the song key and scale. Export a tuned copy from any take below; your dry original stays untouched.", color = Muted, fontSize = 11.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("KEY", color = Muted, fontSize = 10.sp)
+                            OutlinedButton(onClick = { autoTuneRoot = (autoTuneRoot + 11) % 12 }) { Text("−") }
+                            Text(noteNames[autoTuneRoot], color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            OutlinedButton(onClick = { autoTuneRoot = (autoTuneRoot + 1) % 12 }) { Text("+") }
+                            Spacer(Modifier.weight(1f))
+                            OutlinedButton(onClick = { autoTuneMajor = !autoTuneMajor }) {
+                                Text(if (autoTuneMajor) "Major" else "Chromatic")
+                            }
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Correction", color = Muted, fontSize = 11.sp, modifier = Modifier.weight(1f))
+                            Text("${(autoTuneStrength * 100).toInt()}%", color = Teal, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Slider(value = autoTuneStrength, onValueChange = { autoTuneStrength = it }, valueRange = 0.35f..0.85f)
+                        Text("Starter setting: 65% · smooth and natural. If you don't know the key, choose Chromatic.", color = Muted, fontSize = 10.sp)
+                    }
+                }
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("YOUR TAKES", color = Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                     Text("${recordings.size} saved", color = Muted, fontSize = 12.sp)
@@ -349,6 +377,47 @@ private fun ToonJackApp() {
                                             onClick = {
                                                 if (renderingFileName == null) {
                                                     renderingFileName = file.name
+                                                    message = "Tuning vocal… keep Toon Jack open."
+                                                    val selectedRoot = autoTuneRoot
+                                                    val selectedStrength = autoTuneStrength
+                                                    val selectedScale = if (autoTuneMajor)
+                                                        com.toonjack.studio.audio.ToonJackDsp.Scale.MAJOR
+                                                    else com.toonjack.studio.audio.ToonJackDsp.Scale.CHROMATIC
+                                                    coroutineScope.launch {
+                                                        val result = withContext(Dispatchers.IO) {
+                                                            try {
+                                                                val base = file.nameWithoutExtension
+                                                                var output = File(recordingsDir, "${base}_AutoTune.m4a")
+                                                                var suffix = 2
+                                                                while (output.exists()) {
+                                                                    output = File(recordingsDir, "${base}_AutoTune_${suffix}.m4a")
+                                                                    suffix++
+                                                                }
+                                                                com.toonjack.studio.audio.OfflineAudioRenderer.renderAutoTune(
+                                                                    file, output, selectedRoot, selectedScale, selectedStrength
+                                                                )
+                                                                Result.success(output)
+                                                            } catch (error: Exception) {
+                                                                Result.failure<File>(error)
+                                                            }
+                                                        }
+                                                        result.onSuccess {
+                                                            message = "Autotune export saved. Original take preserved."
+                                                            refreshRecordings()
+                                                        }.onFailure {
+                                                            message = "Autotune failed: ${it.localizedMessage ?: "Audio processing error"}"
+                                                        }
+                                                        renderingFileName = null
+                                                    }
+                                                }
+                                            },
+                                            enabled = renderingFileName == null,
+                                            modifier = Modifier.weight(1.2f)
+                                        ) { Text("Autotune", fontSize = 11.sp) }
+                                        OutlinedButton(
+                                            onClick = {
+                                                if (renderingFileName == null) {
+                                                    renderingFileName = file.name
                                                     message = "Creating a separate Dream Voice version…"
                                                     coroutineScope.launch {
                                                         val result = withContext(Dispatchers.IO) {
@@ -388,7 +457,7 @@ private fun ToonJackApp() {
                         }
                     }
                 }
-                Text("Dry original takes are preserved. Autotune and rendered effect exports are the next processing-engine milestone.", color = Muted, fontSize = 10.sp)
+                Text("Original takes are preserved. Processed exports are saved as separate files.", color = Muted, fontSize = 10.sp)
             }
         }
     }
