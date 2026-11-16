@@ -54,7 +54,7 @@ button{font:inherit;cursor:pointer}button:disabled{opacity:.45;cursor:not-allowe
 .stage-bottom{padding:10px 0;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center}
 .stage-bottom button{flex:1}
 .stage-hint{font-size:11px;color:var(--muted);text-align:center;padding:5px}
-[hidden]{display:none!important}
+#stageVoicePanel{margin:4px 0 8px;padding:10px;flex-shrink:0}#stageVoiceSettings{padding-top:6px}#stageLyrics{min-height:0}#libraryPage #songList{max-height:220px;overflow:auto;padding-right:3px}#libraryPage #takeList{min-height:35vh}.take-item{padding:16px;margin:12px 0}.take-item audio{height:44px}.take-actions button{padding:10px;font-size:13px}[hidden]{display:none!important}
 footer{text-align:center;color:#81908d;font-size:11px;padding:24px 0 5px}
 @media(min-width:620px){.app{padding:24px 24px 50px}.card{padding:21px}}
 
@@ -139,6 +139,15 @@ footer{text-align:center;color:#81908d;font-size:11px;padding:24px 0 5px}
   <label>Scroll speed <input id="scrollSpeed" type="range" min="0" max="36" step="1" value="10"><span id="scrollSpeedValue">10</span></label>
   <button class="secondary" id="scrollToggle">Start timed scroll</button>
  </div>
+ <div class="autotune-panel" id="stageVoicePanel">
+  <div class="row" style="align-items:center"><label class="autotune-toggle" style="margin:0"><input type="checkbox" id="stageLiveAutotune"> Live Autotune</label><button class="secondary" id="stageVoiceMore" type="button">Voice settings ▾</button></div>
+  <div id="stageVoiceSettings" hidden><div class="autotune-grid">
+   <div><label for="stageTuneKey">Key</label><select id="stageTuneKey"><option>C</option><option>C#</option><option>D</option><option>D#</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>G#</option><option>A</option><option>A#</option><option>B</option></select></div>
+   <div><label for="stageTuneScale">Scale</label><select id="stageTuneScale"><option value="major">Major</option><option value="minor">Minor</option><option value="pentatonic">Pentatonic</option><option value="chromatic">Chromatic</option></select></div>
+   <div><label for="stageTuneStrength">Correction <span id="stageTuneStrengthValue">75%</span></label><input id="stageTuneStrength" type="range" min="0" max="100" value="75"></div>
+   <div><label for="stageVocalPreset">Vocal tone</label><select id="stageVocalPreset"><option value="clean">Natural Clean</option><option value="dreamy">Dreamy Vocal</option><option value="youngBlue">Young Blue</option><option value="warm">Warm Studio</option><option value="radio">Radio Vocal</option><option value="rnb">R&amp;B Smooth</option></select></div>
+  </div><button class="secondary full" id="stageProcessTake" type="button">✨ Create tuned copy of latest take</button><div class="status" id="stageTuneStatus" aria-live="polite"></div></div>
+ </div>
  <div id="stageLyrics">Your lyrics will appear here.</div>
  <div class="stage-hint" id="stageHint">Web version: manual timed scrolling only. Voice-following stays on-device in the Android app.</div>
  <div class="stage-bottom"><button class="secondary" id="fontDown">A−</button><button class="secondary" id="fontUp">A+</button><button class="secondary" id="stageRecord">● Record</button><button class="primary" id="scrollTop">Top ↑</button></div>
@@ -193,6 +202,12 @@ $('saveSong').onclick=async()=>{try{await saveCurrentSong()}catch(e){$('songStat
 $('newSong').onclick=()=>{currentSongId=null;window.currentCreatedAt=null;$('songTitle').value='';$('lyrics').value='';$('songNotes').value='';$('songStatus').textContent='Ready for a new song.';$('songTitle').focus()};
 function setRecordingUI(active){$('recordButton').classList.toggle('stop',active);$('recordButton').textContent=active?'■':'●';$('recordButton').setAttribute('aria-label',active?'Stop recording':'Start recording');$('recordState').textContent=active?'● Recording in progress':'Microphone is off';$('recordHint').textContent=active?'Tap the square to stop':'Tap the red button to begin';$('stageRecord').textContent=active?'■ Stop recording':'● Record'}
 $('stageRecord').onclick=()=>{$('recordButton').click()};
+$('stageVoiceMore').onclick=()=>{const panel=$('stageVoiceSettings');panel.hidden=!panel.hidden;$('stageVoiceMore').textContent=panel.hidden?'Voice settings ▾':'Voice settings ▴'};
+function syncStageVoiceToMain(){ $('liveAutotune').checked=$('stageLiveAutotune').checked; $('tuneKey').value=$('stageTuneKey').value; $('tuneScale').value=$('stageTuneScale').value; $('tuneStrength').value=$('stageTuneStrength').value; $('tuneStrengthValue').textContent=$('tuneStrength').value+'%'; $('vocalPreset').value=$('stageVocalPreset').value; }
+$('stageLiveAutotune').onchange=()=>{syncStageVoiceToMain();$('autotuneStatus').textContent=$('stageLiveAutotune').checked?'Live Autotune enabled for the next take.':'Live Autotune disabled.';$('stageTuneStatus').textContent=$('autotuneStatus').textContent};
+['stageTuneKey','stageTuneScale','stageTuneStrength','stageVocalPreset'].forEach(id=>$(id).addEventListener('input',syncStageVoiceToMain));
+$('stageTuneStrength').oninput=()=>{$('stageTuneStrengthValue').textContent=$('stageTuneStrength').value+'%';syncStageVoiceToMain()};
+$('stageProcessTake').onclick=()=>{$('postAutotune').click()};
 
 $('recordButton').onclick=async()=>{
  if(recorder&&recorder.state==='recording'){recorder.stop();return}
