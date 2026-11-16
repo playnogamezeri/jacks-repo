@@ -496,6 +496,15 @@ private fun ToonJackApp() {
     }
 }
 
-@Composable\nprivate fun ToneControl(label: String, value: Float, onValueChange: (Float) -> Unit) {\n    Row(verticalAlignment = Alignment.CenterVertically) {\n        Text(label, color = Muted, fontSize = 11.sp, modifier = Modifier.weight(1f))\n        Text("${(value * 100).toInt()}%", color = Teal, fontSize = 11.sp, fontWeight = FontWeight.Bold)\n    }\n    Slider(value = value, onValueChange = onValueChange, valueRange = 0f..1f)\n}\n\nprivate fun formatTime(seconds: Long): String = "%02d:%02d".format(seconds / 60, seconds % 60)
+@Composable
+private fun ToneControl(label: String, value: Float, onValueChange: (Float) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(label, color = Muted, fontSize = 11.sp, modifier = Modifier.weight(1f))
+        Text("${(value * 100).toInt()}%", color = Teal, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+    }
+    Slider(value = value, onValueChange = onValueChange, valueRange = 0f..1f)
+}
+
+private fun formatTime(seconds: Long): String = "%02d:%02d".format(seconds / 60, seconds % 60)
 private fun formatMillis(milliseconds: Int): String = "%02d:%02d".format(milliseconds / 60000, (milliseconds / 1000) % 60)
 private fun formatBytes(bytes: Long): String = if (bytes < 1024) "$bytes B" else String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024.0))
