@@ -40,7 +40,16 @@ object OfflineAudioRenderer {
         encodeMonoAac(tuned.samples, decoded.sampleRate, destination)
     }
 
-    fun renderDreamVoice(source: File, destination: File) {
+    fun renderDreamVoice(
+        source: File,
+        destination: File,
+        warmth: Float = 0.28f,
+        softness: Float = 0.42f,
+        air: Float = 0.32f,
+        compression: Float = 0.34f,
+        deEss: Float = 0.35f,
+        ambience: Float = 0.16f
+    ) {
         require(source.exists() && source.length() > 0L) { "Source recording is missing or empty." }
         require(source.canonicalFile != destination.canonicalFile) { "Output must be a separate file." }
         destination.parentFile?.mkdirs()
@@ -48,7 +57,15 @@ object OfflineAudioRenderer {
         val decoded = decodeToMono(source)
         require(decoded.samples.isNotEmpty()) { "No audio samples were decoded." }
 
-        val processed = DreamVoiceProcessor(decoded.sampleRate.toFloat()).process(decoded.samples)
+        val processed = DreamVoiceProcessor(
+            decoded.sampleRate.toFloat(),
+            warmth = warmth,
+            softness = softness,
+            air = air,
+            compression = compression,
+            deEss = deEss,
+            ambience = ambience
+        ).process(decoded.samples)
         encodeMonoAac(processed, decoded.sampleRate, destination)
     }
 
