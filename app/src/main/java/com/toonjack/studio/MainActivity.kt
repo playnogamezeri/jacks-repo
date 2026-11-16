@@ -28,6 +28,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -104,6 +105,7 @@ private fun ToonJackApp() {
     var dreamAmbience by remember { mutableStateOf(0.16f) }
     val noteNames = listOf("C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B")
     val coroutineScope = rememberCoroutineScope()
+    var showLyrics by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         message = if (granted) "Microphone ready. Tap Record to begin." else "Microphone permission is needed to record."
@@ -250,6 +252,9 @@ private fun ToonJackApp() {
         background = Background, surface = Panel, onSurface = Ink
     )) {
         Surface(modifier = Modifier.fillMaxSize(), color = Background) {
+            if (showLyrics) {
+                LyricsScreen(onBack = { showLyrics = false })
+            } else {
             Column(
                 modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -262,6 +267,12 @@ private fun ToonJackApp() {
                     }
                     Text("🎙️", fontSize = 34.sp)
                 }
+
+                OutlinedButton(
+                    onClick = { showLyrics = true },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = RoundedCornerShape(14.dp)
+                ) { Text("♫  OPEN LYRIC BOOK", fontWeight = FontWeight.Bold) }
 
                 Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(24.dp)) {
                     Column(Modifier.fillMaxWidth().padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -492,7 +503,108 @@ private fun ToonJackApp() {
                 }
                 Text("Original takes are preserved. Processed exports are saved as separate files.", color = Muted, fontSize = 10.sp)
             }
+            }
         }
+    }
+}
+
+@Composable
+private fun LyricsScreen(onBack: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val lyricsDir = remember { File(context.filesDir, "lyrics").apply { mkdirs() } }
+    val drafts = remember {
+        mutableStateListOf<File>().apply {
+            addAll(lyricsDir.listFiles()?.filter { it.extension == "txt" }?.sortedByDescending { it.lastModified() } ?: emptyList())
+        }
+    }
+    var selectedFile by remember { mutableStateOf<File?>(null) }
+    var title by remember { mutableStateOf("") }
+    var lyrics by remember { mutableStateOf("") }
+    var status by remember { mutableStateOf("Your words stay saved on this phone.") }
+
+    fun refreshDrafts() {
+        drafts.clear()
+        drafts.addAll(lyricsDir.listFiles()?.filter { it.extension == "txt" }?.sortedByDescending { it.lastModified() } ?: emptyList())
+    }
+    fun openDraft(file: File) {
+        try {
+            val lines = file.readLines()
+            title = lines.firstOrNull()?.removePrefix("# ") ?: file.nameWithoutExtension
+            lyrics = lines.drop(2).joinToString("\n")
+            selectedFile = file
+            status = "Draft opened"
+        } catch (error: Exception) {
+            status = "Could not open draft: " + (error.localizedMessage ?: "File error")
+        }
+    }
+    fun newDraft() {
+        selectedFile = null
+        title = "Untitled Song"
+        lyrics = ""
+        status = "New lyric draft"
+    }
+    fun saveDraft() {
+        try {
+            val cleanTitle = title.trim().ifBlank { "Untitled Song" }
+            val file = selectedFile ?: File(lyricsDir, "Lyric_" + System.currentTimeMillis() + ".txt")
+            file.writeText("# " + cleanTitle + "\n\n" + lyrics)
+            selectedFile = file
+            title = cleanTitle
+            refreshDrafts()
+            status = "Saved on this phone"
+        } catch (error: Exception) {
+            status = "Save failed: " + (error.localizedMessage ?: "Storage error")
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedButton(onClick = onBack) { Text("← Studio") }
+            Spacer(Modifier.weight(1f))
+            Text("TOON JACK  /  LYRIC BOOK", color = Teal, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.3.sp)
+        }
+        Text("Write your song.", color = Ink, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        Text("A private space for hooks, verses, bridges, and unfinished ideas.", color = Muted, fontSize = 12.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { newDraft() }, modifier = Modifier.weight(1f)) { Text("+ New lyric") }
+            OutlinedButton(onClick = { saveDraft() }, modifier = Modifier.weight(1f), enabled = title.isNotBlank() || lyrics.isNotBlank()) { Text("Save draft") }
+        }
+        OutlinedTextField(value = title, onValueChange = { title = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Song title") }, singleLine = true)
+        OutlinedTextField(
+            value = lyrics,
+            onValueChange = { lyrics = it },
+            modifier = Modifier.fillMaxWidth().height(390.dp),
+            label = { Text("Lyrics") },
+            placeholder = { Text("Verse 1\n\nPre-Chorus\n\nChorus\n\nVerse 2\n\nBridge\n\nFinal Chorus") },
+            minLines = 12
+        )
+        Text(status, color = Teal, fontSize = 11.sp)
+        Text("SAVED LYRICS", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        if (drafts.isEmpty()) {
+            Text("No saved lyrics yet. Start a new draft and tap Save.", color = Muted, fontSize = 12.sp)
+        } else {
+            drafts.forEach { file ->
+                Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(14.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(file.nameWithoutExtension, color = Ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            Text("Saved lyric draft", color = Muted, fontSize = 10.sp)
+                        }
+                        OutlinedButton(onClick = { openDraft(file) }) { Text(if (selectedFile == file) "Open ✓" else "Open") }
+                        OutlinedButton(onClick = {
+                            if (file == selectedFile) { selectedFile = null; title = ""; lyrics = "" }
+                            file.delete()
+                            refreshDrafts()
+                            status = "Draft deleted"
+                        }) { Text("Delete", color = Color(0xFFFF8585)) }
+                    }
+                }
+            }
+        }
+        Text("Lyric drafts are stored privately inside Toon Jack on this device.", color = Muted, fontSize = 10.sp)
     }
 }
 
