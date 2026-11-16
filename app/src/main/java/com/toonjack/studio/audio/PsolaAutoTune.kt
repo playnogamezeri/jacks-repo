@@ -3,18 +3,11 @@ package com.toonjack.studio.audio
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
-import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.roundToInt
-import kotlin.math.sin
 
 /**
  * Offline monophonic vocal pitch correction using a pitch-synchronous
  * overlap-add grain shifter. Input/output are mono normalized Float PCM.
- *
- * This is intentionally conservative: uncertain/unvoiced frames remain dry,
- * correction is smoothed between analysis frames, and output is normalized
- * by the accumulated window weights to avoid amplitude pumping.
  */
 class PsolaAutoTune(
     private val sampleRate: Float,
@@ -56,9 +49,7 @@ class PsolaAutoTune(
                 if (sourceIndex in input.indices) frame[i] = input[sourceIndex]
             }
 
-            val estimate = ToonJackDsp.detectPitch(
-                frame, sampleRate, minHz, maxHz, clarityThreshold
-            )
+            val estimate = ToonJackDsp.detectPitch(frame, sampleRate, minHz, maxHz, clarityThreshold)
             val target = estimate?.let {
                 ToonJackDsp.correctionTarget(it.frequencyHz, rootMidiNote, scale, strength)
             }
@@ -66,7 +57,6 @@ class PsolaAutoTune(
                 abs(target.centsToCorrect) <= maxCorrectionCents
             ) target.ratio else 1f
 
-            // Smooth ratio across frames to avoid abrupt jumps and zipper artifacts.
             smoothedRatio += (requestedRatio - smoothedRatio) * 0.38f
             val active = estimate != null && target != null &&
                 abs(target.centsToCorrect) <= maxCorrectionCents &&
@@ -75,8 +65,11 @@ class PsolaAutoTune(
             val shifted = if (active) {
                 corrected++
                 centsTotal += abs(target!!.centsToCorrect)
-                shiftFramePsola(frame, sampleRate / estimate!!.frequencyHz,
-                    (sampleRate / estimate.frequencyHz) / smoothedRatio)
+                shiftFrame(
+                    frame,
+                    sampleRate / estimate!!.frequencyHz,
+                    (sampleRate / estimate.frequencyHz) / smoothedRatio
+                )
             } else {
                 bypassed++
                 frame
@@ -97,16 +90,10 @@ class PsolaAutoTune(
             output[i] = output[i].coerceIn(-1f, 1f)
         }
 
-        return Result(
-            output,
-            Stats(corrected, bypassed, if (corrected == 0) 0f else centsTotal / corrected)
-        )
+        return Result(output, Stats(corrected, bypassed,
+            if (corrected == 0) 0f else centsTotal / corrected))
     }
 
-    /**
-     * Resynthesize a voiced frame by placing source-period grains at target-
-     * period intervals. A two-period Hann grain preserves local waveform shape.
-     */
     private fun shiftFrame(frame: FloatArray, sourcePeriod: Float, targetPeriod: Float): FloatArray {
         val n = frame.size
         if (!sourcePeriod.isFinite() || !targetPeriod.isFinite() ||
@@ -121,12 +108,11 @@ class PsolaAutoTune(
         var outCenter = 0f
 
         while (outCenter < n) {
-            // Snap the analysis center to the nearest source-period mark.
             val mark = (outCenter / sourcePeriod).roundToInt() * sourcePeriod
             val sourceCenter = mark.coerceIn(halfGrain.toFloat(), (n - halfGrain - 1).toFloat())
             val destinationCenter = outCenter.roundToInt()
             for (j in 0 until grainLength) {
-                val src = (sourceCenter.roundToInt() - halfGrain + j)
+                val src = sourceCenter.roundToInt() - halfGrain + j
                 val dst = destinationCenter - halfGrain + j
                 if (src !in frame.indices || dst !in out.indices) continue
                 val window = (0.5 - 0.5 * cos(2.0 * PI * j / (grainLength - 1))).toFloat()
