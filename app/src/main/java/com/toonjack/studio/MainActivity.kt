@@ -53,6 +53,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -95,6 +98,8 @@ private fun ToonJackApp() {
     var deleteTarget by remember { mutableStateOf<File?>(null) }
     var selectedPreset by remember { mutableStateOf("Natural Clean") }
     var message by remember { mutableStateOf("Your private recording space") }
+    var renderingFileName by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         message = if (granted) "Microphone ready. Tap Record to begin." else "Microphone permission is needed to record."
@@ -358,23 +363,68 @@ private fun ToonJackApp() {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
                         items(recordings, key = { it.name }) { file ->
                             Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(15.dp)) {
-                                Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Column(Modifier.weight(1f)) {
-                                        Text(file.nameWithoutExtension.replace("ToonJack_", ""), color = Ink, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-                                        Text(formatBytes(file.length()), color = Muted, fontSize = 10.sp)
+                                Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Column(Modifier.weight(1f)) {
+                                            Text(file.nameWithoutExtension.replace("ToonJack_", ""), color = Ink, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                            Text(formatBytes(file.length()), color = Muted, fontSize = 10.sp)
+                                        }
+                                        if (renderingFileName == file.name) {
+                                            Text("Rendering…", color = Teal, fontSize = 11.sp)
+                                        }
                                     }
-                                    OutlinedButton(onClick = {
-                                        if (playingName == file.name) {
-                                            if (isPlaying) {
-                                                player?.pause()
-                                                isPlaying = false
-                                            } else {
-                                                player?.start()
-                                                isPlaying = true
-                                            }
-                                        } else play(file)
-                                    }) { Text(if (playingName == file.name) if (isPlaying) "Pause" else "Resume" else "Play") }
-                                    OutlinedButton(onClick = { deleteTarget = file }) { Text("Delete", color = Color(0xFFFF8585)) }
+                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        OutlinedButton(onClick = {
+                                            if (playingName == file.name) {
+                                                if (isPlaying) {
+                                                    player?.pause()
+                                                    isPlaying = false
+                                                } else {
+                                                    player?.start()
+                                                    isPlaying = true
+                                                }
+                                            } else play(file)
+                                        }, modifier = Modifier.weight(1f)) {
+                                            Text(if (playingName == file.name) if (isPlaying) "Pause" else "Resume" else "Play")
+                                        }
+                                        OutlinedButton(
+                                            onClick = {
+                                                if (renderingFileName == null) {
+                                                    renderingFileName = file.name
+                                                    message = "Creating a separate Dream Voice version…"
+                                                    coroutineScope.launch {
+                                                        val result = withContext(Dispatchers.IO) {
+                                                            try {
+                                                                val base = file.nameWithoutExtension
+                                                                var output = File(recordingsDir, "${base}_DreamVoice.m4a")
+                                                                var suffix = 2
+                                                                while (output.exists()) {
+                                                                    output = File(recordingsDir, "${base}_DreamVoice_${suffix}.m4a")
+                                                                    suffix++
+                                                                }
+                                                                com.toonjack.studio.audio.OfflineAudioRenderer.renderDreamVoice(file, output)
+                                                                Result.success(output)
+                                                            } catch (error: Exception) {
+                                                                Result.failure<File>(error)
+                                                            }
+                                                        }
+                                                        result.onSuccess {
+                                                            message = "Dream Voice export saved. Your original is untouched."
+                                                            refreshRecordings()
+                                                        }.onFailure {
+                                                            message = "Voice render failed: ${it.localizedMessage ?: "Audio processing error"}"
+                                                        }
+                                                        renderingFileName = null
+                                                    }
+                                                }
+                                            },
+                                            enabled = renderingFileName == null,
+                                            modifier = Modifier.weight(1.35f)
+                                        ) { Text("Dream Voice", fontSize = 11.sp) }
+                                        OutlinedButton(onClick = { deleteTarget = file }) {
+                                            Text("Delete", color = Color(0xFFFF8585))
+                                        }
+                                    }
                                 }
                             }
                         }
