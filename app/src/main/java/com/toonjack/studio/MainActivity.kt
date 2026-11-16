@@ -488,6 +488,7 @@ private fun ToonJackApp() {
                                 }
                             }
                     }
+                    }
                 }
                 Text("Original takes are preserved. Processed exports are saved as separate files.", color = Muted, fontSize = 10.sp)
             }
