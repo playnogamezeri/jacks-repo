@@ -38,9 +38,7 @@ import java.util.zip.ZipOutputStream
 fun RecordingBackupCard(recordingsDir: File) {
     val context = LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
-    val recordings = remember(recordingsDir) {
-        recordingsDir.listFiles()?.filter { it.isFile && it.extension.equals("m4a", true) } ?: emptyList()
-    }
+    val recordings = recordingsDir.listFiles()?.filter { it.isFile && it.extension.equals("m4a", true) } ?: emptyList()
     var status by remember { mutableStateOf("Export your takes before uninstalling or changing phones.") }
 
     val createBackup = rememberLauncherForActivityResult(
