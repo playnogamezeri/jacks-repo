@@ -620,25 +620,3 @@ private fun ToneControl(label: String, value: Float, onValueChange: (Float) -> U
 private fun formatTime(seconds: Long): String = "%02d:%02d".format(seconds / 60, seconds % 60)
 private fun formatMillis(milliseconds: Int): String = "%02d:%02d".format(milliseconds / 60000, (milliseconds / 1000) % 60)
 private fun formatBytes(bytes: Long): String = if (bytes < 1024) "$bytes B" else String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024.0))
-
-private fun extractYouTubeVideoId(input: String): String? {
-    val pattern = Regex("(?:youtu[.]be/|(?:www[.]|m[.] )?youtube(?:-nocookie)?[.]com/(?:.*[?&]v=|embed/|shorts/|live/))([A-Za-z0-9_-]{11})".replace("m[.] ", "m[.]"))
-    return pattern.find(input.trim())?.groupValues?.getOrNull(1)
-}
-
-@Composable
-private fun YouTubeEmbed(videoId: String) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val webView = remember(videoId) {
-        WebView(context).apply {
-            settings.javaScriptEnabled = true
-            settings.domStorageEnabled = true
-            settings.mediaPlaybackRequiresUserGesture = true
-            webViewClient = WebViewClient()
-            val html = "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1, maximum-scale=1'><style>html,body{margin:0;padding:0;background:#000;height:100%;overflow:hidden}iframe{width:100%;height:100%;border:0}</style></head><body><iframe src='https://www.youtube-nocookie.com/embed/" + videoId + "?playsinline=1&rel=0' title='YouTube backing track' allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share' allowfullscreen></iframe></body></html>"
-            loadDataWithBaseURL("https://www.youtube-nocookie.com", html, "text/html", "UTF-8", null)
-        }
-    }
-    DisposableEffect(webView) { onDispose { webView.stopLoading(); webView.destroy() } }
-    AndroidView(factory = { webView }, modifier = Modifier.fillMaxWidth().height(210.dp))
-}
