@@ -523,6 +523,39 @@ private fun ToonJackApp() {
                                             Text("Delete", color = Color(0xFFFF8585))
                                         }
                                     }
+                                    OutlinedButton(
+                                        onClick = {
+                                            if (renderingFileName == null) {
+                                                renderingFileName = file.name
+                                                message = "Rendering $karaokePreset karaoke vocal…"
+                                                val root = autoTuneRoot
+                                                val scale = if (autoTuneMajor) com.toonjack.studio.audio.ToonJackDsp.Scale.MAJOR else com.toonjack.studio.audio.ToonJackDsp.Scale.CHROMATIC
+                                                val strength = autoTuneStrength
+                                                val preset = karaokePreset
+                                                val intensity = karaokeIntensity
+                                                coroutineScope.launch {
+                                                    val result = withContext(Dispatchers.IO) {
+                                                        try {
+                                                            val tag = preset.replace(" ", "")
+                                                            var output = File(recordingsDir, "${file.nameWithoutExtension}_${tag}.m4a")
+                                                            var suffix = 2
+                                                            while (output.exists()) {
+                                                                output = File(recordingsDir, "${file.nameWithoutExtension}_${tag}_${suffix}.m4a")
+                                                                suffix++
+                                                            }
+                                                            com.toonjack.studio.audio.OfflineAudioRenderer.renderKaraokeVoice(file, output, root, scale, strength, preset, intensity)
+                                                            Result.success(output)
+                                                        } catch (error: Exception) { Result.failure<File>(error) }
+                                                    }
+                                                    result.onSuccess { message = "$preset export saved. Original take preserved."; refreshRecordings() }
+                                                        .onFailure { message = "Karaoke processing failed: ${it.localizedMessage ?: "Audio error"}" }
+                                                    renderingFileName = null
+                                                }
+                                            }
+                                        },
+                                        enabled = renderingFileName == null && autoTuneEnabled,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) { Text("Karaoke Voice • $karaokePreset") }
                                 }
                             }
                     }
