@@ -69,6 +69,45 @@ object OfflineAudioRenderer {
         encodeMonoAac(processed, decoded.sampleRate, destination)
     }
 
+    fun renderKaraokeVoice(
+        source: File,
+        destination: File,
+        rootMidiNote: Int,
+        scale: ToonJackDsp.Scale,
+        correctionStrength: Float,
+        preset: String,
+        intensity: Float
+    ) {
+        require(source.exists() && source.length() > 0L) { "Source recording is missing or empty." }
+        require(source.canonicalFile != destination.canonicalFile) { "Output must be a separate file." }
+        destination.parentFile?.mkdirs()
+        val decoded = decodeToMono(source)
+        require(decoded.samples.isNotEmpty()) { "No audio samples were decoded." }
+        val level = intensity.coerceIn(0f, 1f)
+        val tuned = PsolaAutoTune(
+            decoded.sampleRate.toFloat(), rootMidiNote, scale,
+            correctionStrength.coerceIn(0f, 1f), minHz = 80f, maxHz = 700f,
+            clarityThreshold = 0.82f, maxCorrectionCents = 200f
+        ).process(decoded.samples).samples
+        val settings = when (preset) {
+            "Velvet Voice" -> floatArrayOf(0.55f, 0.72f, 0.18f, 0.58f, 0.55f, 0.22f)
+            "Studio Pop" -> floatArrayOf(0.28f, 0.35f, 0.42f, 0.78f, 0.48f, 0.12f)
+            "Echo Karaoke" -> floatArrayOf(0.25f, 0.38f, 0.30f, 0.52f, 0.35f, 0.90f)
+            "Deep Voice" -> floatArrayOf(0.62f, 0.58f, 0.12f, 0.62f, 0.48f, 0.20f)
+            else -> floatArrayOf(0.48f, 0.62f, 0.55f, 0.48f, 0.45f, 0.48f)
+        }
+        val processed = DreamVoiceProcessor(
+            decoded.sampleRate.toFloat(),
+            warmth = settings[0] * level,
+            softness = settings[1] * level,
+            air = settings[2] * level,
+            compression = settings[3] * level,
+            deEss = settings[4] * level,
+            ambience = settings[5] * level
+        ).process(tuned)
+        encodeMonoAac(processed, decoded.sampleRate, destination)
+    }
+
     private data class DecodedAudio(val samples: FloatArray, val sampleRate: Int)
 
     private fun decodeToMono(file: File): DecodedAudio {
