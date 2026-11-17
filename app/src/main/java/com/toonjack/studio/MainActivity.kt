@@ -405,6 +405,8 @@ private fun ToonJackApp() {
                     }
                 }
 
+                RecordingBackupCard(recordingsDir)
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("YOUR TAKES", color = Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                     Text("${recordings.size} saved", color = Muted, fontSize = 12.sp)
