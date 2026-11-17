@@ -521,6 +521,11 @@ private fun LyricsScreen(onBack: () -> Unit) {
     var title by remember { mutableStateOf("") }
     var lyrics by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("Your words stay saved on this phone.") }
+    var showKaraoke by remember { mutableStateOf(false) }
+    if (showKaraoke) {
+        KaraokeRecordingScreen(title = title, lyrics = lyrics, onBack = { showKaraoke = false })
+        return
+    }
 
     fun refreshDrafts() {
         drafts.clear()
@@ -581,6 +586,7 @@ private fun LyricsScreen(onBack: () -> Unit) {
             placeholder = { Text("Verse 1\n\nPre-Chorus\n\nChorus\n\nVerse 2\n\nBridge\n\nFinal Chorus") },
             minLines = 12
         )
+        Button(onClick = { showKaraoke = true }, modifier = Modifier.fillMaxWidth(), enabled = lyrics.isNotBlank()) { Text("SING & RECORD") }
         Text(status, color = Teal, fontSize = 11.sp)
         Text("SAVED LYRICS", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         if (drafts.isEmpty()) {
@@ -620,3 +626,126 @@ private fun ToneControl(label: String, value: Float, onValueChange: (Float) -> U
 private fun formatTime(seconds: Long): String = "%02d:%02d".format(seconds / 60, seconds % 60)
 private fun formatMillis(milliseconds: Int): String = "%02d:%02d".format(milliseconds / 60000, (milliseconds / 1000) % 60)
 private fun formatBytes(bytes: Long): String = if (bytes < 1024) "$bytes B" else String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024.0))
+
+
+@Composable
+private fun KaraokeRecordingScreen(title: String, lyrics: String, onBack: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val recordingsDir = remember { File(context.filesDir, "recordings").apply { mkdirs() } }
+    val scrollState = rememberScrollState()
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    var recorder by remember { mutableStateOf<MediaRecorder?>(null) }
+    var recordingFile by remember { mutableStateOf<File?>(null) }
+    var isRecording by remember { mutableStateOf(false) }
+    var startedAt by remember { mutableStateOf(0L) }
+    var elapsed by remember { mutableStateOf(0L) }
+    var autoScroll by remember { mutableStateOf(true) }
+    var scrollSpeed by remember { mutableStateOf(42f) }
+    var status by remember { mutableStateOf("Ready. Use headphones if you have separate playback.") }
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        status = if (granted) "Microphone ready. Tap Record to begin." else "Microphone permission is required."
+    }
+    fun startTake() {
+        try {
+            val stamp = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US).format(Date())
+            val file = File(recordingsDir, "ToonJack_Karaoke_$stamp.m4a")
+            val newRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(context) else @Suppress("DEPRECATION") MediaRecorder()
+            newRecorder.setAudioSource(MediaRecorder.AudioSource.MIC)
+            newRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            newRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            newRecorder.setAudioEncodingBitRate(192000)
+            newRecorder.setAudioSamplingRate(48000)
+            newRecorder.setOutputFile(file.absolutePath)
+            newRecorder.prepare()
+            newRecorder.start()
+            recorder = newRecorder
+            recordingFile = file
+            startedAt = System.currentTimeMillis()
+            elapsed = 0L
+            isRecording = true
+            status = "Recording your singing and guitar through the microphone."
+        } catch (error: Exception) {
+            try { recorder?.release() } catch (_: Exception) {}
+            recorder = null
+            isRecording = false
+            status = "Could not start recording: " + (error.localizedMessage ?: "Audio unavailable")
+        }
+    }
+    fun stopTake() {
+        try {
+            recorder?.stop()
+            status = "Take saved in your Toon Jack recordings."
+        } catch (_: Exception) {
+            recordingFile?.delete()
+            status = "Recording was too short. Try again."
+        } finally {
+            try { recorder?.release() } catch (_: Exception) {}
+            recorder = null
+            recordingFile = null
+            isRecording = false
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            try { recorder?.stop() } catch (_: Exception) {}
+            try { recorder?.release() } catch (_: Exception) {}
+        }
+    }
+    LaunchedEffect(isRecording) {
+        while (isRecording) {
+            elapsed = (System.currentTimeMillis() - startedAt) / 1000L
+            delay(250)
+        }
+    }
+    LaunchedEffect(autoScroll, scrollSpeed) {
+        if (autoScroll) {
+            val pixelsPerTick = with(density) { (scrollSpeed * 0.1f).dp.roundToPx() }.coerceAtLeast(1)
+            while (autoScroll && scrollState.value < scrollState.maxValue) {
+                scrollState.scrollTo((scrollState.value + pixelsPerTick).coerceAtMost(scrollState.maxValue))
+                delay(100)
+            }
+        }
+    }
+    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedButton(onClick = onBack, enabled = !isRecording) { Text("Back to lyrics") }
+            Spacer(Modifier.weight(1f))
+            Text("KARAOKE RECORD", color = Teal, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        }
+        Text(title.ifBlank { "Untitled Song" }, color = Ink, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(18.dp)) {
+            Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(if (isRecording) "RECORDING" else "READY TO RECORD", color = if (isRecording) Color(0xFFFF7777) else Teal, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Text(formatTime(elapsed), color = Ink, fontSize = 22.sp)
+                }
+                Button(onClick = {
+                    if (isRecording) stopTake()
+                    else if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) startTake()
+                    else permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                }, modifier = Modifier.fillMaxWidth().height(50.dp), colors = ButtonDefaults.buttonColors(containerColor = if (isRecording) Color(0xFFB84D55) else Teal)) {
+                    Text(if (isRecording) "STOP & SAVE TAKE" else "START SINGING & RECORD")
+                }
+                Text(status, color = Muted, fontSize = 10.sp)
+            }
+        }
+        Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
+            Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("AUTO-SCROLL LYRICS", color = Ink, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Switch(checked = autoScroll, onCheckedChange = { autoScroll = it })
+                }
+                Text("Scroll speed: " + scrollSpeed.toInt() + " dp/second", color = Muted, fontSize = 10.sp)
+                Slider(value = scrollSpeed, onValueChange = { scrollSpeed = it }, valueRange = 10f..120f, enabled = autoScroll)
+                Text("Turn auto-scroll off to move through lyrics manually.", color = Muted, fontSize = 10.sp)
+            }
+        }
+        Card(Modifier.weight(1f).fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF101D1B)), shape = RoundedCornerShape(18.dp)) {
+            Column(Modifier.fillMaxSize().verticalScroll(scrollState).padding(horizontal = 20.dp, vertical = 24.dp)) {
+                Text(lyrics, color = Ink, fontSize = 23.sp, lineHeight = 36.sp, fontWeight = FontWeight.Medium)
+                Spacer(Modifier.height(220.dp))
+            }
+        }
+        Text("Records microphone audio, including your singing and acoustic guitar. Use headphones for separate playback.", color = Muted, fontSize = 10.sp)
+    }
+}
