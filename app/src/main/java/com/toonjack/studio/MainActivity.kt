@@ -33,6 +33,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -509,6 +510,335 @@ private fun ToonJackApp() {
     }
 }
 
+
+private data class PracticeSong(val title: String, val style: String, val focus: String, val chords: String, val lyrics: String)
+
+private val acousticPracticeSongs = listOf(
+    PracticeSong("Stay Until the Morning", "Gentle acoustic pop", "Soft tenor and breath control", "G – D – Em – C", """[Verse 1]
+The night is falling over town
+The world is quiet, lights go down
+I hear the rain against the glass
+And wish that this could always last
+
+[Pre-Chorus]
+There's something I can't explain
+A little warmth inside the rain
+
+[Chorus]
+Stay until the morning
+Stay until the light
+Let me hear your heartbeat
+Through the quiet night
+We don't need forever
+We don't need to know
+Just stay until the morning
+Before you have to go
+
+[Verse 2]
+The stars are fading one by one
+But I don't want this night undone
+There's nowhere else I'd rather be
+Than where your shadow rests with me
+
+[Bridge]
+And if tomorrow takes you away
+I'll keep this moment anyway
+
+[Final Chorus]
+Stay until the morning
+Stay until the light
+Let me hear your heartbeat
+Through the quiet night"""),
+    PracticeSong("Paper Hearts", "Emotional acoustic ballad", "Emotional expression and vibrato", "C – G – Am – F", """[Verse 1]
+We built a house from paper hearts
+And watched it fall apart
+We wrote our dreams across the walls
+But never saw the cracks at all
+
+[Pre-Chorus]
+I tried to hold what couldn't stay
+But love can slowly fade away
+
+[Chorus]
+We're only paper hearts in the rain
+Trying to hold on through the pain
+Every little piece that falls apart
+Still carries something from the start
+And even when the colors disappear
+I can still remember you were here
+
+[Verse 2]
+I found your letter yesterday
+The words were fading into gray
+I read it once, then read it twice
+Some memories don't need advice
+
+[Bridge]
+Maybe we were never meant to last
+But that doesn't make it less beautiful
+
+[Final Chorus]
+We're only paper hearts in the rain
+Trying to hold on through the pain"""),
+    PracticeSong("Open Road", "Upbeat acoustic folk-pop", "Rhythm and clear articulation", "D – A – Bm – G", """[Verse 1]
+Put my old shoes by the door
+I don't need them anymore
+Got a little cash and a restless soul
+And a thousand miles before I go
+
+[Chorus]
+Take me down that open road
+Anywhere the wild winds blow
+I don't need a map tonight
+Just a little hope and a little light
+If the world keeps spinning round
+I'll keep my feet above the ground
+There's a whole life left to know
+Waiting down that open road
+
+[Verse 2]
+Every town has something new
+Every sky has a different blue
+I'll make mistakes along the way
+But I won't let fear decide my day
+
+[Bridge]
+Oh, the road is long
+But my heart is strong
+
+[Final Chorus]
+Take me down that open road
+Anywhere the wild winds blow"""),
+    PracticeSong("The Things I Never Said", "Fingerpicked acoustic ballad", "Quiet verses and emotional crescendos", "Am – F – C – G", """[Verse 1]
+I had a thousand words for you
+But never found the time
+I kept them hidden in my chest
+Like secrets in a rhyme
+
+[Verse 2]
+I should have told you that you mattered
+I should have let you know
+That every little thing you did
+Meant more than you could know
+
+[Chorus]
+These are the things I never said
+The words that stayed inside my head
+If I could turn the years around
+I'd let them out, I'd make a sound
+But all I have is this melody
+And everything you meant to me
+
+[Bridge]
+If you could hear me now
+Would you understand somehow?
+
+[Final Chorus]
+These are the things I never said
+The words that stayed inside my head"""),
+    PracticeSong("Golden Hour", "Warm acoustic pop", "Bright tone and higher-register transitions", "G – C – Em – D", """[Verse 1]
+The sunlight dances on your face
+The afternoon slows down its pace
+We're laughing like we have no plans
+With summer slipping through our hands
+
+[Chorus]
+Meet me in the golden hour
+Where the sky becomes a flower
+Where the world is soft and slow
+And there's nowhere else to go
+If this moment disappears
+I'll remember you were here
+Meet me in the golden hour
+Stay with me a little longer
+
+[Verse 2]
+The city lights are coming on
+But I don't feel the day is gone
+Your smile is brighter than the sky
+And I could watch it all night
+
+[Bridge]
+No promises, no perfect plans
+Just your fingers in my hands
+
+[Final Chorus]
+Meet me in the golden hour
+Where the sky becomes a flower"""),
+    PracticeSong("Breathe Again", "Inspirational acoustic ballad", "Long phrases and breath support", "Em – C – G – D", """[Verse 1]
+I've been walking through the silence
+With a storm inside my mind
+Trying to find a little courage
+Trying to leave the past behind
+
+[Pre-Chorus]
+But every sunrise tells me
+There's another chance to begin
+
+[Chorus]
+I will breathe again
+I will rise again
+Even if the road is breaking underneath my feet
+I will find my way
+I will face the day
+There's a little more of life waiting for me
+I will breathe again
+
+[Verse 2]
+Every scar becomes a story
+Every fall becomes a start
+I don't have to know the future
+I just have to trust my heart
+
+[Bridge]
+Let the wind carry the sorrow
+Let the sunlight find tomorrow
+
+[Final Chorus]
+I will breathe again
+I will rise again
+There's a little more of life waiting for me"""),
+    PracticeSong("Midnight Conversations", "Acoustic indie-pop", "Conversational phrasing and low register", "D – Bm – G – A", """[Verse 1]
+It's two AM, we're talking slow
+About the things we used to know
+You tell a joke, I start to smile
+And suddenly it's been a while
+
+[Chorus]
+Midnight conversations
+Little revelations
+Talking about the world
+Like we can change it all
+No destination
+No expectations
+Just another night
+Before the morning calls
+
+[Verse 2]
+You say the future feels unknown
+I say you're never on your own
+We laugh about the things we've done
+And wonder where the years have gone
+
+[Bridge]
+Maybe these are ordinary days
+That we'll remember in a thousand ways
+
+[Final Chorus]
+Midnight conversations
+Little revelations
+Just another night
+Before the morning calls"""),
+    PracticeSong("Run Toward the Sun", "Acoustic folk-rock", "Projection and energetic chorus", "A – E – F#m – D", """[Verse 1]
+I've been waiting for a sign
+Watching every passing light
+But the answer isn't coming
+So I'll make the choice tonight
+
+[Pre-Chorus]
+I won't wait for perfect weather
+I won't wait for wings to fly
+
+[Chorus]
+I'm gonna run toward the sun
+Until the day is done
+With my hands up in the air
+And the wind inside my hair
+I don't know where I'll belong
+But I'll keep moving on
+I'm gonna run toward the sun
+Until my journey's done
+
+[Verse 2]
+Every mountain has a summit
+Every river finds the sea
+Every dream begins with someone
+Who believes in what could be
+
+[Bridge]
+Let the thunder call my name
+I won't ever be the same
+
+[Final Chorus]
+I'm gonna run toward the sun
+Until the day is done"""),
+    PracticeSong("If You Were Here", "Minimal acoustic heartbreak ballad", "Controlled emotion and gentle high notes", "C – Am – F – G", """[Verse 1]
+There's an empty chair beside the window
+Where you used to watch the rain
+And I still catch myself turning
+When I hear somebody say your name
+
+[Chorus]
+If you were here
+I'd tell you everything
+About the little things
+And all the songs I sing
+If you were here
+The room would feel alive
+I'd give anything
+To see your smile tonight
+
+[Verse 2]
+I still remember how you laughed
+At things nobody understood
+And sometimes when the world gets heavy
+I wish I could go back if I could
+
+[Bridge]
+I know that time won't turn around
+But your memory is still around
+
+[Final Chorus]
+If you were here
+I'd tell you everything
+About the little things
+And all the songs I sing"""),
+    PracticeSong("Home Is a Feeling", "Warm acoustic closing ballad", "Full range and expressive dynamics", "G – D – C – Em", """[Verse 1]
+I've seen a thousand different places
+I've watched a million sunsets fall
+I've searched for something I could hold
+But never found it after all
+
+[Pre-Chorus]
+Then somewhere in the middle
+Of everything I thought I knew
+
+[Chorus]
+Home is a feeling
+Not a place on a map
+It's the warmth of a moment
+That you wish would last
+It's the voice that reminds you
+You're never alone
+Home is a feeling
+And it follows you home
+
+[Verse 2]
+The years will change the roads we travel
+The faces change along the way
+But some things stay inside our hearts
+No matter how far we stray
+
+[Bridge]
+And when the world gets cold
+And every light grows dim
+I'll remember where I'm from
+And find my way again
+
+[Final Chorus]
+Home is a feeling
+Not a place on a map
+It's the warmth of a moment
+That you wish would last
+Home is a feeling
+And it follows you home
+
+[Outro]
+Home is a feeling
+And it follows you home.""")
+)
+
+
 @Composable
 private fun LyricsScreen(onBack: () -> Unit, onRecordingSaved: (File) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -523,6 +853,7 @@ private fun LyricsScreen(onBack: () -> Unit, onRecordingSaved: (File) -> Unit) {
     var lyrics by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("Your words stay saved on this phone.") }
     var showKaraoke by remember { mutableStateOf(false) }
+    var showPracticeSongs by remember { mutableStateOf(true) }
     if (showKaraoke) {
         KaraokeRecordingScreen(title = title, lyrics = lyrics, onBack = { showKaraoke = false }, onSaved = onRecordingSaved)
         return
@@ -589,6 +920,28 @@ private fun LyricsScreen(onBack: () -> Unit, onRecordingSaved: (File) -> Unit) {
         )
         Button(onClick = { showKaraoke = true }, modifier = Modifier.fillMaxWidth(), enabled = lyrics.isNotBlank()) { Text("SING & RECORD") }
         Text(status, color = Teal, fontSize = 11.sp)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("ACOUSTIC PRACTICE SONGS", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            TextButton(onClick = { showPracticeSongs = !showPracticeSongs }) { Text(if (showPracticeSongs) "Hide" else "Show") }
+        }
+        Text("10 original songs with guitar chords and vocal exercises. Load one into the editor, then open Sing & Record.", color = Muted, fontSize = 11.sp)
+        if (showPracticeSongs) {
+            acousticPracticeSongs.forEach { song ->
+                Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(14.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(song.title, color = Ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        Text(song.style + "  •  " + song.focus, color = Muted, fontSize = 10.sp)
+                        Text("Guitar: " + song.chords, color = Teal, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                        OutlinedButton(onClick = {
+                            title = song.title
+                            lyrics = song.lyrics
+                            selectedFile = null
+                            status = "Practice song loaded. Save it to keep an editable copy."
+                        }, modifier = Modifier.fillMaxWidth()) { Text("LOAD INTO LYRIC EDITOR") }
+                    }
+                }
+            }
+        }
         Text("SAVED LYRICS", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         if (drafts.isEmpty()) {
             Text("No saved lyrics yet. Start a new draft and tap Save.", color = Muted, fontSize = 12.sp)
