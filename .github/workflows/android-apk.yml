@@ -41,22 +41,27 @@ jobs:
         with:
           path: ~/.android/debug.keystore
           key: toon-jack-debug-signing-key-v1
-      - name: Ensure debug signing key exists
+      - name: Verify persistent signing key
+        shell: bash
         run: |
-          mkdir -p "$HOME/.android"
-          if [ ! -f "$HOME/.android/debug.keystore" ]; then
-            keytool -genkeypair -v \
-              -keystore "$HOME/.android/debug.keystore" \
-              -storepass android \
-              -alias androiddebugkey \
-              -keypass android \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
-              -dname "CN=Android Debug,O=Android,C=US"
+          set -euo pipefail
+          test -f "$HOME/.android/debug.keystore" || {
+            echo "::error::Persistent Toon Jack signing key is missing; refusing to generate a replacement."
+            exit 1
+          }
+          ACTUAL="$(keytool -exportcert -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey 2>/dev/null | sha256sum | awk '{print $1}')"
+          EXPECTED="ff9927feb87599c8c1882ce95c92fc6b1b52c5d7348622ff453002af673f6031"
+          echo "Signing certificate SHA-256: $ACTUAL"
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::Signing key does not match the currently installed Toon Jack 1.1.1 app. No APK will be published."
+            exit 1
           fi
       - name: Build debug APK
         run: gradle --no-daemon :app:assembleDebug
+      - name: Verify APK signature
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk | grep -F "Signer #1 certificate SHA-256 digest: ff9927feb87599c8c1882ce95c92fc6b1b52c5d7348622ff453002af673f6031"
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
