@@ -105,6 +105,8 @@ private fun ToonJackApp() {
     var dreamCompression by remember { mutableStateOf(0.34f) }
     var dreamDeEss by remember { mutableStateOf(0.35f) }
     var dreamAmbience by remember { mutableStateOf(0.16f) }
+    var karaokePreset by remember { mutableStateOf("Dreamy Male") }
+    var karaokeIntensity by remember { mutableStateOf(0.75f) }
     val noteNames = listOf("C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B")
     val coroutineScope = rememberCoroutineScope()
     var showLyrics by remember { mutableStateOf(false) }
@@ -357,6 +359,30 @@ private fun ToonJackApp() {
                         }
                         Slider(value = autoTuneStrength, onValueChange = { autoTuneStrength = it }, valueRange = 0.35f..0.85f)
                         Text("Starter setting: 65% · smooth and natural. If you don't know the key, choose Chromatic.", color = Muted, fontSize = 10.sp)
+                    }
+                }
+
+                Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(20.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                        Text("KARAOKE VOICE STUDIO", color = Teal, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                        Text("Pitch correction plus a vocal-effects preset", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Creates a separate processed copy. Your original recording is never changed.", color = Muted, fontSize = 10.sp)
+                        listOf("Dreamy Male", "Velvet Voice", "Studio Pop", "Echo Karaoke", "Deep Voice").chunked(2).forEach { group ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                group.forEach { preset ->
+                                    OutlinedButton(onClick = { karaokePreset = preset }, modifier = Modifier.weight(1f)) {
+                                        Text(if (karaokePreset == preset) "✓ $preset" else preset, fontSize = 10.sp)
+                                    }
+                                }
+                                if (group.size == 1) Spacer(Modifier.weight(1f))
+                            }
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Effect intensity", color = Muted, fontSize = 11.sp, modifier = Modifier.weight(1f))
+                            Text("${(karaokeIntensity * 100).toInt()}%", color = Teal, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Slider(value = karaokeIntensity, onValueChange = { karaokeIntensity = it }, valueRange = 0.2f..1f)
+                        Text("Deep Voice is a tonal preset, not AI voice conversion or guaranteed formant/gender transformation.", color = Muted, fontSize = 10.sp)
                     }
                 }
 
