@@ -30,38 +30,57 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
       - name: Install Android platform and build tools
-        run: |
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
-      - name: Restore persistent debug signing key
-        uses: actions/cache@v4
-        with:
-          path: ~/.android/debug.keystore
-          key: toon-jack-debug-signing-key-v1
-      - name: Verify persistent signing key
+
+      # A GitHub Actions cache is only an optimization and can be evicted.
+      # The signing keystore must live in repository Actions secrets instead.
+      - name: Load permanent Toon Jack signing key
         shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.TOONJACK_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.TOONJACK_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.TOONJACK_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.TOONJACK_KEY_PASSWORD }}
+          EXPECTED_CERT_SHA256: ${{ secrets.TOONJACK_SIGNING_CERT_SHA256 }}
         run: |
           set -euo pipefail
-          test -f "$HOME/.android/debug.keystore" || {
-            echo "::error::Persistent Toon Jack signing key is missing; refusing to generate a replacement."
-            exit 1
-          }
-          ACTUAL="$(keytool -exportcert -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey 2>/dev/null | sha256sum | awk '{print $1}')"
-          EXPECTED="ff9927feb87599c8c1882ce95c92fc6b1b52c5d7348622ff453002af673f6031"
-          echo "Signing certificate SHA-256: $ACTUAL"
-          if [ "$ACTUAL" != "$EXPECTED" ]; then
-            echo "::error::Signing key does not match the currently installed Toon Jack 1.1.1 app. No APK will be published."
+          for name in KEYSTORE_BASE64 STORE_PASSWORD KEY_ALIAS KEY_PASSWORD EXPECTED_CERT_SHA256; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing GitHub Actions secret: TOONJACK_${name}. Configure all five TOONJACK signing secrets before building."
+              exit 1
+            fi
+          done
+          KEYSTORE_PATH="$RUNNER_TEMP/toonjack-signing.keystore"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+          test -s "$KEYSTORE_PATH"
+          ACTUAL_CERT_SHA256="$(keytool -exportcert -keystore "$KEYSTORE_PATH" -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" 2>/dev/null | sha256sum | awk '{print $1}')"
+          EXPECTED_CERT_SHA256="$(printf '%s' "$EXPECTED_CERT_SHA256" | tr '[:upper:]' '[:lower:]' | tr -d ':[:space:]')"
+          echo "Signing certificate SHA-256: $ACTUAL_CERT_SHA256"
+          if [ "$ACTUAL_CERT_SHA256" != "$EXPECTED_CERT_SHA256" ]; then
+            echo "::error::Signing keystore fingerprint does not match TOONJACK_SIGNING_CERT_SHA256. Build stopped to prevent an un-installable update."
             exit 1
           fi
+          {
+            echo "TOONJACK_KEYSTORE_PATH=$KEYSTORE_PATH"
+            echo "TOONJACK_STORE_PASSWORD=$STORE_PASSWORD"
+            echo "TOONJACK_KEY_ALIAS=$KEY_ALIAS"
+            echo "TOONJACK_KEY_PASSWORD=$KEY_PASSWORD"
+            echo "TOONJACK_SIGNING_CERT_SHA256=$ACTUAL_CERT_SHA256"
+          } >> "$GITHUB_ENV"
+
       - name: Build debug APK
         run: gradle --no-daemon :app:assembleDebug
       - name: Verify APK signature
+        shell: bash
         run: |
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk | grep -F "Signer #1 certificate SHA-256 digest: ff9927feb87599c8c1882ce95c92fc6b1b52c5d7348622ff453002af673f6031"
+          set -euo pipefail
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK" | grep -F "Signer #1 certificate SHA-256 digest: $TOONJACK_SIGNING_CERT_SHA256"
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
