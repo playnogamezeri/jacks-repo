@@ -526,6 +526,24 @@ private fun ToonJackApp() {
                                             Text("Delete", color = Color(0xFFFF8585))
                                         }
                                     }
+                                    if (playingName == file.name) {
+                                        Slider(
+                                            value = playerPosition.coerceIn(0, playerDuration.coerceAtLeast(1)).toFloat(),
+                                            onValueChange = { value ->
+                                                playerPosition = value.toInt()
+                                                try { player?.seekTo(playerPosition) } catch (_: Exception) {}
+                                            },
+                                            valueRange = 0f..playerDuration.coerceAtLeast(1).toFloat(),
+                                            enabled = playerDuration > 0,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(formatMillis(playerPosition), color = Muted, fontSize = 10.sp, modifier = Modifier.weight(1f))
+                                            Text(if (isPlaying) "PLAYING" else "PAUSED", color = Teal, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                            Spacer(Modifier.weight(1f))
+                                            Text(formatMillis(playerDuration), color = Muted, fontSize = 10.sp)
+                                        }
+                                    }
                                     OutlinedButton(
                                         onClick = {
                                             if (renderingFileName == null) {
