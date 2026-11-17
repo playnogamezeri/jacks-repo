@@ -16,6 +16,23 @@ android {
         versionName = "1.2.0"
     }
 
+    // Always use the persistent CI keystore. Do not let Gradle silently
+    // fall back to a runner-generated debug key.
+    signingConfigs {
+        create("persistentDebug") {
+            storeFile = file(System.getProperty("user.home") + "/.android/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
+    buildTypes {
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("persistentDebug")
+        }
+    }
+
     buildFeatures { compose = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
