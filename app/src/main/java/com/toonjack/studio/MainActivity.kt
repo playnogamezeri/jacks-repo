@@ -4,9 +4,6 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.media.MediaPlayer
 import android.media.MediaRecorder
-import android.net.Uri
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -47,7 +44,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -111,51 +107,6 @@ private fun ToonJackApp() {
     val noteNames = listOf("C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B")
     val coroutineScope = rememberCoroutineScope()
     var showLyrics by remember { mutableStateOf(false) }
-    val backingDir = remember { File(context.filesDir, "backing_tracks").apply { mkdirs() } }
-    var backingFile by remember { mutableStateOf(backingDir.listFiles()?.filter { it.isFile }?.maxByOrNull { it.lastModified() }) }
-    var backingPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
-    var backingPlaying by remember { mutableStateOf(false) }
-    var backingPosition by remember { mutableStateOf(0) }
-    var backingDuration by remember { mutableStateOf(0) }
-    var backingLoop by remember { mutableStateOf(false) }
-    var backingStatus by remember { mutableStateOf("Import an instrumental or backing track from your phone.") }
-    var youtubeUrl by remember { mutableStateOf("") }
-    var youtubeVideoId by remember { mutableStateOf<String?>(null) }
-    var youtubeError by remember { mutableStateOf<String?>(null) }
-    val backingPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        if (uri != null) {
-            coroutineScope.launch {
-                try {
-                    val copied = withContext(Dispatchers.IO) {
-                        val mime = context.contentResolver.getType(uri).orEmpty()
-                        val ext = when {
-                            mime.contains("mpeg") -> "mp3"
-                            mime.contains("wav") -> "wav"
-                            mime.contains("ogg") -> "ogg"
-                            mime.contains("flac") -> "flac"
-                            mime.contains("mp4") || mime.contains("m4a") -> "m4a"
-                            else -> "audio"
-                        }
-                        val target = File(backingDir, "BackingTrack_" + System.currentTimeMillis() + "." + ext)
-                        context.contentResolver.openInputStream(uri)?.use { input ->
-                            target.outputStream().use { output -> input.copyTo(output) }
-                        } ?: throw IllegalStateException("Could not open selected audio file")
-                        target
-                    }
-                    backingPlayer?.release()
-                    backingPlayer = null
-                    backingFile = copied
-                    backingPlaying = false
-                    backingPosition = 0
-                    backingDuration = 0
-                    backingStatus = "Track imported. Press Play when you're ready."
-                } catch (error: Exception) {
-                    backingStatus = "Import failed: " + (error.localizedMessage ?: "Audio file error")
-                }
-            }
-        }
-    }
-
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         message = if (granted) "Microphone ready. Tap Record to begin." else "Microphone permission is needed to record."
     }
@@ -239,38 +190,6 @@ private fun ToonJackApp() {
         }
     }
 
-    fun stopBackingPlayback() {
-        try { backingPlayer?.release() } catch (_: Exception) {}
-        backingPlayer = null
-        backingPlaying = false
-        backingPosition = 0
-        backingDuration = 0
-    }
-
-    fun startBackingPlayback() {
-        val file = backingFile ?: return
-        try {
-            val active = backingPlayer ?: MediaPlayer().also { mp ->
-                mp.setDataSource(file.absolutePath)
-                mp.isLooping = backingLoop
-                mp.setOnCompletionListener {
-                    backingPlaying = false
-                    backingPosition = 0
-                }
-                mp.prepare()
-                backingDuration = mp.duration.coerceAtLeast(0)
-                backingPlayer = mp
-            }
-            active.isLooping = backingLoop
-            active.start()
-            backingPlaying = true
-            backingStatus = "Playing backing track"
-        } catch (error: Exception) {
-            stopBackingPlayback()
-            backingStatus = "Playback failed: " + (error.localizedMessage ?: "Audio error")
-        }
-    }
-
     fun stopPlayback() {
         try { player?.release() } catch (_: Exception) {}
         player = null
@@ -286,7 +205,6 @@ private fun ToonJackApp() {
             try { recorder?.stop() } catch (_: Exception) {}
             try { recorder?.release() } catch (_: Exception) {}
             try { player?.release() } catch (_: Exception) {}
-            try { backingPlayer?.release() } catch (_: Exception) {}
 
         }
     }
@@ -296,17 +214,6 @@ private fun ToonJackApp() {
             elapsed = (System.currentTimeMillis() - recordingStarted) / 1000
             delay(250)
         }
-    }
-
-    LaunchedEffect(backingPlayer, backingPlaying) {
-        while (backingPlayer != null && backingPlaying) {
-            try { backingPosition = backingPlayer?.currentPosition ?: 0 } catch (_: Exception) {}
-            delay(200)
-        }
-    }
-
-    LaunchedEffect(backingLoop) {
-        try { backingPlayer?.isLooping = backingLoop } catch (_: Exception) {}
     }
 
     LaunchedEffect(player, isPlaying) {
@@ -359,62 +266,6 @@ private fun ToonJackApp() {
                         Text("Your voice. Your songs. Your space.", color = Muted, fontSize = 12.sp)
                     }
                     Text("🎙️", fontSize = 34.sp)
-                }
-
-                Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(20.dp)) {
-                    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                        Text("BACKING TRACK PLAYER", color = Teal, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                        Text(backingFile?.nameWithoutExtension ?: "No backing track selected", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                        Text(backingStatus, color = Muted, fontSize = 11.sp)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Button(onClick = { backingPicker.launch(arrayOf("audio/*")) }, modifier = Modifier.weight(1f)) { Text("Import audio") }
-                            OutlinedButton(onClick = {
-                                if (backingPlaying) {
-                                    try { backingPlayer?.pause(); backingPlaying = false } catch (_: Exception) {}
-                                } else startBackingPlayback()
-                            }, enabled = backingFile != null, modifier = Modifier.weight(1f)) {
-                                Text(if (backingPlaying) "Pause" else "Play")
-                            }
-                            OutlinedButton(onClick = { stopBackingPlayback() }, enabled = backingPlayer != null) { Text("Stop") }
-                        }
-                        if (backingFile != null) {
-                            Slider(
-                                value = backingPosition.coerceIn(0, backingDuration.coerceAtLeast(1)).toFloat(),
-                                onValueChange = { value ->
-                                    backingPosition = value.toInt()
-                                    try { backingPlayer?.seekTo(backingPosition) } catch (_: Exception) {}
-                                },
-                                valueRange = 0f..backingDuration.coerceAtLeast(1).toFloat(),
-                                enabled = backingDuration > 0
-                            )
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(formatMillis(backingPosition), color = Muted, fontSize = 10.sp, modifier = Modifier.weight(1f))
-                                Text(formatMillis(backingDuration), color = Muted, fontSize = 10.sp)
-                            }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("Loop instrumental", color = Muted, fontSize = 11.sp, modifier = Modifier.weight(1f))
-                                Switch(checked = backingLoop, onCheckedChange = { backingLoop = it })
-                            }
-                        }
-                    }
-                }
-
-                Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(20.dp)) {
-                    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("YOUTUBE BACKING TRACK", color = Teal, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                        Text("Paste a YouTube video link to play it inside Toon Jack.", color = Muted, fontSize = 11.sp)
-                        OutlinedTextField(value = youtubeUrl, onValueChange = { youtubeUrl = it; youtubeError = null }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("YouTube URL") }, placeholder = { Text("https://www.youtube.com/watch?v=...") })
-                        Button(onClick = {
-                            val id = extractYouTubeVideoId(youtubeUrl)
-                            if (id == null) { youtubeVideoId = null; youtubeError = "That link is not a supported YouTube video URL." }
-                            else { youtubeVideoId = id; youtubeError = null }
-                        }, modifier = Modifier.fillMaxWidth()) { Text("LOAD YOUTUBE VIDEO") }
-                        youtubeError?.let { Text(it, color = Color(0xFFFF9B9B), fontSize = 11.sp) }
-                        if (youtubeVideoId != null) {
-                            YouTubeEmbed(videoId = youtubeVideoId!!)
-                            Text("Playback is provided by YouTube. Video availability and ads follow YouTube.", color = Muted, fontSize = 10.sp)
-                        }
-                    }
                 }
 
                 OutlinedButton(
