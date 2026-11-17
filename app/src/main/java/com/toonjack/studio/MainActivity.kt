@@ -1089,7 +1089,19 @@ private fun KaraokeRecordingScreen(title: String, lyrics: String, onBack: () -> 
                     Text("AUTO-SCROLL LYRICS", color = Ink, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                     Switch(checked = autoScroll, onCheckedChange = { autoScroll = it })
                 }
-                Text("Scroll speed: " + scrollSpeed.toInt() + " dp/second", color = Muted, fontSize = 10.sp)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Scroll speed: " + scrollSpeed.toInt() + " dp/second", color = Muted, fontSize = 10.sp, modifier = Modifier.weight(1f))
+                    OutlinedButton(
+                        onClick = { scrollSpeed = (scrollSpeed - 5f).coerceAtLeast(10f) },
+                        enabled = autoScroll && scrollSpeed > 10f,
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp)
+                    ) { Text("−", fontSize = 18.sp) }
+                    OutlinedButton(
+                        onClick = { scrollSpeed = (scrollSpeed + 5f).coerceAtMost(120f) },
+                        enabled = autoScroll && scrollSpeed < 120f,
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp)
+                    ) { Text("+", fontSize = 18.sp) }
+                }
                 Slider(value = scrollSpeed, onValueChange = { scrollSpeed = it }, valueRange = 10f..120f, enabled = autoScroll)
                 Text("Turn auto-scroll off to move through lyrics manually.", color = Muted, fontSize = 10.sp)
             }
