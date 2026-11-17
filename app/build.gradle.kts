@@ -12,18 +12,20 @@ android {
         applicationId = "com.toonjack.studio"
         minSdk = 26
         targetSdk = 35
-        versionCode = 13
-        versionName = "1.2.0"
+        versionCode = 14
+        versionName = "1.2.1"
     }
 
-    // Always use the persistent CI keystore. Do not let Gradle silently
-    // fall back to a runner-generated debug key.
+    // CI supplies one long-lived keystore from GitHub Actions secrets.
+    // Local builds may use the developer's normal Android debug keystore.
     signingConfigs {
         create("persistentDebug") {
-            storeFile = file(System.getProperty("user.home") + "/.android/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
+            val ciKeystore = System.getenv("TOONJACK_KEYSTORE_PATH")
+            storeFile = ciKeystore?.let { file(it) }
+                ?: file(System.getProperty("user.home") + "/.android/debug.keystore")
+            storePassword = System.getenv("TOONJACK_STORE_PASSWORD") ?: "android"
+            keyAlias = System.getenv("TOONJACK_KEY_ALIAS") ?: "androiddebugkey"
+            keyPassword = System.getenv("TOONJACK_KEY_PASSWORD") ?: "android"
         }
     }
 
