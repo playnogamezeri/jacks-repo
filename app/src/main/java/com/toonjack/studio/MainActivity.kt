@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.roundToPx
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.delay
@@ -253,7 +254,7 @@ private fun ToonJackApp() {
     )) {
         Surface(modifier = Modifier.fillMaxSize(), color = Background) {
             if (showLyrics) {
-                LyricsScreen(onBack = { showLyrics = false })
+                LyricsScreen(onBack = { showLyrics = false }, onRecordingSaved = { file -> recordings.add(0, file) })
             } else {
             Column(
                 modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 18.dp),
@@ -509,7 +510,7 @@ private fun ToonJackApp() {
 }
 
 @Composable
-private fun LyricsScreen(onBack: () -> Unit) {
+private fun LyricsScreen(onBack: () -> Unit, onRecordingSaved: (File) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val lyricsDir = remember { File(context.filesDir, "lyrics").apply { mkdirs() } }
     val drafts = remember {
@@ -523,7 +524,7 @@ private fun LyricsScreen(onBack: () -> Unit) {
     var status by remember { mutableStateOf("Your words stay saved on this phone.") }
     var showKaraoke by remember { mutableStateOf(false) }
     if (showKaraoke) {
-        KaraokeRecordingScreen(title = title, lyrics = lyrics, onBack = { showKaraoke = false })
+        KaraokeRecordingScreen(title = title, lyrics = lyrics, onBack = { showKaraoke = false }, onSaved = onRecordingSaved)
         return
     }
 
@@ -629,7 +630,7 @@ private fun formatBytes(bytes: Long): String = if (bytes < 1024) "$bytes B" else
 
 
 @Composable
-private fun KaraokeRecordingScreen(title: String, lyrics: String, onBack: () -> Unit) {
+private fun KaraokeRecordingScreen(title: String, lyrics: String, onBack: () -> Unit, onSaved: (File) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val recordingsDir = remember { File(context.filesDir, "recordings").apply { mkdirs() } }
     val scrollState = rememberScrollState()
@@ -674,6 +675,7 @@ private fun KaraokeRecordingScreen(title: String, lyrics: String, onBack: () -> 
     fun stopTake() {
         try {
             recorder?.stop()
+            recordingFile?.let { if (it.exists() && it.length() > 0) onSaved(it) }
             status = "Take saved in your Toon Jack recordings."
         } catch (_: Exception) {
             recordingFile?.delete()
