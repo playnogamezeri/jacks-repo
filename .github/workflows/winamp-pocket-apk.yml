@@ -30,6 +30,12 @@ jobs:
         with:
           path: ~/.android/debug.keystore
           key: winamp-pocket-debug-signing-key-v1
+      - name: Inspect available signing-key caches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/caches?per_page=100" --jq '.actions_caches[] | select(.key | contains("winamp-pocket-debug-signing-key")) | [.id, .key, .version, .created_at, .last_accessed_at] | @tsv' || true
       - name: Create stable Android debug signing key if missing
         shell: bash
         run: |
