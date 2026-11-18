@@ -15,6 +15,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.PowerManager;
 import android.provider.OpenableColumns;
+import android.provider.DocumentsContract;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -280,6 +281,7 @@ public class MainActivity extends Activity {
                 org.json.JSONObject item=items.getJSONObject(i); Uri u=Uri.parse(item.getString("uri"));
                 try{getContentResolver().takePersistableUriPermission(u,Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(Exception ignored){}
                 String name=item.optString("name","Audio track"); String[] meta=readMetadata(u,name);
+                if(isDuplicateTrack(u)) continue;
                 tracks.add(u); names.add((names.size()+1)+".  "+name); addedAt.add(item.optLong("addedAt",System.currentTimeMillis()));
                 artists.add(item.optString("artist",meta[0])); trackTitles.add(item.optString("title",meta[1]));
             }
@@ -293,12 +295,44 @@ public class MainActivity extends Activity {
     private void pickFiles(){Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.setType("audio/*");i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);i.addCategory(Intent.CATEGORY_OPENABLE);startActivityForResult(i,100);}
     @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(result==RESULT_OK&&data!=null&&request==101){writePlaylistFile(data.getData());return;}if(result==RESULT_OK&&data!=null&&request==102){readPlaylistFile(data.getData());return;}if(result==RESULT_OK&&data!=null&&request==103){copyCurrentTrack(data.getData());return;}if(request==100&&result==RESULT_OK&&data!=null){if(data.getClipData()!=null){for(int n=0;n<data.getClipData().getItemCount();n++)addUri(data.getClipData().getItemAt(n).getUri());}else if(data.getData()!=null)addUri(data.getData());adapter.notifyDataSetChanged();savePlaylist();if(current<0&&!tracks.isEmpty())playIndex(0);}}
     private void addUri(Uri u){
-        if(u==null || tracks.contains(u)) return;
+        if(u==null || isDuplicateTrack(u)) {
+            if(u!=null) toast("Already in playlist");
+            return;
+        }
         try{getContentResolver().takePersistableUriPermission(u,Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(Exception ignored){}
         String name="Audio track";
         Cursor c=getContentResolver().query(u,null,null,null,null);
         if(c!=null){if(c.moveToFirst()){int k=c.getColumnIndex(OpenableColumns.DISPLAY_NAME);if(k>=0)name=c.getString(k);}c.close();}
         String[] meta=readMetadata(u,name);tracks.add(u);names.add((names.size()+1)+".  "+name);addedAt.add(System.currentTimeMillis());artists.add(meta[0]);trackTitles.add(meta[1]);
+    }
+
+    // Compare stable document/media identifiers as well as the raw URI. Android can expose
+    // the same audio file through both a MediaStore URI and a Storage Access Framework URI.
+    private String trackIdentity(Uri uri) {
+        if(uri==null) return "";
+        try {
+            String authority=uri.getAuthority()==null?"":uri.getAuthority().toLowerCase(Locale.US);
+            if(DocumentsContract.isDocumentUri(this,uri)) {
+                String documentId=DocumentsContract.getDocumentId(uri);
+                if("com.android.providers.media.documents".equals(authority) && documentId.startsWith("audio:"))
+                    return "media:audio:"+documentId.substring(6);
+                return "document:"+authority+":"+documentId;
+            }
+            if("media".equals(authority) && uri.getPath()!=null && uri.getPath().contains("/audio/media/")) {
+                java.util.List<String> parts=uri.getPathSegments();
+                if(!parts.isEmpty()) return "media:audio:"+parts.get(parts.size()-1);
+            }
+        } catch(Exception ignored) {}
+        return uri.normalizeScheme().toString();
+    }
+
+    private boolean isDuplicateTrack(Uri candidate) {
+        if(candidate==null) return false;
+        String key=trackIdentity(candidate);
+        for(Uri existing:tracks) {
+            if(existing!=null && (existing.equals(candidate) || key.equals(trackIdentity(existing)))) return true;
+        }
+        return false;
     }
 
     // The playlist is saved automatically and restored when the app is reopened.
@@ -330,6 +364,7 @@ public class MainActivity extends Activity {
                 String name=item.optString("name","Audio track");
                 try{
                     getContentResolver().openFileDescriptor(uri,"r").close();
+                    if(isDuplicateTrack(uri)) continue;
                     tracks.add(uri);
                     names.add((names.size()+1)+".  "+name);
                     addedAt.add(item.optLong("addedAt",0L));String[] meta=readMetadata(uri,name);artists.add(item.optString("artist",meta[0]));trackTitles.add(item.optString("title",meta[1]));
