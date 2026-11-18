@@ -147,7 +147,7 @@ public class StudioActivity extends Activity {
                 canvas.drawText("WAITING FOR AUDIO SIGNAL...",dp(8),h/2,paint);return;
             }
             float gap=dp(2),barWidth=(w-gap*(BAR_COUNT+1))/BAR_COUNT;
-            int maxBin=Math.max(2,bins.length/4);
+            int maxBin=Math.max(2,bins.length/2-1);
             for(int i=0;i<BAR_COUNT;i++){
                 int from=Math.max(1,(int)Math.floor(Math.pow(maxBin,(double)i/BAR_COUNT)));
                 int to=Math.max(from+1,(int)Math.ceil(Math.pow(maxBin,(double)(i+1)/BAR_COUNT)));
