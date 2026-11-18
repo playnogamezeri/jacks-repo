@@ -9,6 +9,7 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.media.MediaMetadataRetriever;
 import android.media.audiofx.Equalizer;
 import android.net.Uri;
 import android.os.Bundle;
@@ -36,7 +37,10 @@ public class MainActivity extends Activity {
     private final ArrayList<Uri> tracks = new ArrayList<>();
     private final ArrayList<String> names = new ArrayList<>();
     private final ArrayList<Long> addedAt = new ArrayList<>();
-    private boolean sortByName = false;
+    private final ArrayList<String> artists = new ArrayList<>();
+    private final ArrayList<String> trackTitles = new ArrayList<>();
+    private int sortMode = 0;
+    private Button sortButton;
     private MediaPlayer player;
     private Equalizer equalizer;
     private int current = -1;
@@ -116,7 +120,7 @@ public class MainActivity extends Activity {
 
         LinearLayout pl = panel("WINAMP PLAYLIST"); content.addView(pl);
         playlist = new ListView(this); playlist.setBackgroundColor(Color.BLACK); playlist.setDividerHeight(dp(1)); playlist.setDivider(new android.graphics.drawable.ColorDrawable(Color.rgb(45,45,45)));
-        adapter = new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1,names){@Override public View getView(int p,View c,ViewGroup parent){TextView v=(TextView)super.getView(p,c,parent);v.setTextColor(p==current?white:green);v.setTextSize(15);v.setTypeface(Typeface.MONOSPACE,Typeface.BOLD);v.setSingleLine(true);v.setPadding(dp(8),dp(7),dp(8),dp(7));v.setBackgroundColor(Color.BLACK);return v;}};
+        adapter = new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1,names){@Override public View getView(int p,View c,ViewGroup parent){TextView v=(TextView)super.getView(p,c,parent);v.setText(displayTrack(p));v.setTextColor(p==current?white:green);v.setTextSize(15);v.setTypeface(Typeface.MONOSPACE,Typeface.BOLD);v.setSingleLine(true);v.setPadding(dp(8),dp(7),dp(8),dp(7));v.setBackgroundColor(Color.BLACK);return v;}};
         playlist.setAdapter(adapter); playlist.setOnItemClickListener((a,v,pos,id)->playIndex(pos));
         playlist.setOnItemLongClickListener((parent,view,position,id)->{
             android.content.ClipData clip=android.content.ClipData.newPlainText("playlist-position",String.valueOf(position));
@@ -150,7 +154,7 @@ public class MainActivity extends Activity {
             return false;
         });
         pl.addView(playlist,new LinearLayout.LayoutParams(-1,dp(235)));
-        LinearLayout actions=new LinearLayout(this); actions.setGravity(Gravity.CENTER); addControl(actions,"ADD FILES",()->pickFiles()); addControl(actions,"REMOVE",()->removeCurrent()); addControl(actions,"SORT: DATE",()->toggleSort()); addControl(actions,"CLEAR",()->clearPlaylist()); addControl(actions,"EXIT",()->exitApp()); pl.addView(actions);
+        LinearLayout actions=new LinearLayout(this); actions.setGravity(Gravity.CENTER); addControl(actions,"ADD FILES",()->pickFiles()); addControl(actions,"REMOVE",()->removeCurrent()); sortButton=addControl(actions,sortLabel(),()->toggleSort()); addControl(actions,"CLEAR",()->clearPlaylist()); addControl(actions,"EXIT",()->exitApp()); pl.addView(actions);
         TextView foot=text("LOCAL AUDIO PLAYER  •  WINAMP-INSPIRED",10,muted,false); foot.setGravity(Gravity.CENTER); foot.setPadding(0,dp(8),0,0); content.addView(foot);
     }
 
@@ -158,7 +162,7 @@ public class MainActivity extends Activity {
     private TextView text(String s,int size,int color,boolean bold){TextView t=new TextView(this);t.setText(s);t.setTextSize(size);t.setTextColor(color);t.setTypeface(bold?Typeface.MONOSPACE:Typeface.DEFAULT,bold?Typeface.BOLD:Typeface.NORMAL);return t;}
     private LinearLayout.LayoutParams matchWrap(){return new LinearLayout.LayoutParams(-1,-2);}
     private int dp(float n){return (int)(n*getResources().getDisplayMetrics().density+0.5f);}
-    private void addControl(LinearLayout row,String label,Runnable action){Button b=new Button(this);b.setText(label);b.setTextSize(10);b.setTextColor(white);b.setAllCaps(false);b.setPadding(dp(5),0,dp(5),0);b.setMinWidth(0);b.setMinimumWidth(dp(42));b.setMinHeight(dp(38));b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.rgb(66,67,85)));b.setOnClickListener(v->action.run());LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,dp(40));lp.setMargins(dp(2),dp(2),dp(2),dp(2));row.addView(b,lp);}
+    private Button addControl(LinearLayout row,String label,Runnable action){Button b=new Button(this);b.setText(label);b.setTextSize(10);b.setTextColor(white);b.setAllCaps(false);b.setPadding(dp(5),0,dp(5),0);b.setMinWidth(0);b.setMinimumWidth(dp(42));b.setMinHeight(dp(38));b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.rgb(66,67,85)));b.setOnClickListener(v->action.run());LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,dp(40));lp.setMargins(dp(2),dp(2),dp(2),dp(2));row.addView(b,lp);return b;}
 
     private void pickFiles(){Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.setType("audio/*");i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);i.addCategory(Intent.CATEGORY_OPENABLE);startActivityForResult(i,100);}
     @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==100&&result==RESULT_OK&&data!=null){if(data.getClipData()!=null){for(int n=0;n<data.getClipData().getItemCount();n++)addUri(data.getClipData().getItemAt(n).getUri());}else if(data.getData()!=null)addUri(data.getData());adapter.notifyDataSetChanged();savePlaylist();if(current<0&&!tracks.isEmpty())playIndex(0);}}
@@ -168,7 +172,7 @@ public class MainActivity extends Activity {
         String name="Audio track";
         Cursor c=getContentResolver().query(u,null,null,null,null);
         if(c!=null){if(c.moveToFirst()){int k=c.getColumnIndex(OpenableColumns.DISPLAY_NAME);if(k>=0)name=c.getString(k);}c.close();}
-        tracks.add(u);names.add((names.size()+1)+".  "+name);addedAt.add(System.currentTimeMillis());
+        String[] meta=readMetadata(u,name);tracks.add(u);names.add((names.size()+1)+".  "+name);addedAt.add(System.currentTimeMillis());artists.add(meta[0]);trackTitles.add(meta[1]);
     }
 
     // The playlist is saved automatically and restored when the app is reopened.
@@ -180,10 +184,10 @@ public class MainActivity extends Activity {
                 item.put("uri",tracks.get(i).toString());
                 String display=cleanTrackName(names.get(i));
                 item.put("name",display);
-                item.put("addedAt",addedAt.get(i));
+                item.put("addedAt",addedAt.get(i));item.put("artist",artists.get(i));item.put("title",trackTitles.get(i));
                 items.put(item);
             }
-            getSharedPreferences("winamp_playlist",MODE_PRIVATE).edit().putString("tracks",items.toString()).putBoolean("sortByName",sortByName).apply();
+            getSharedPreferences("winamp_playlist",MODE_PRIVATE).edit().putString("tracks",items.toString()).putInt("sortMode",sortMode).apply();
         }catch(Exception e){toast("Could not save playlist");}
     }
 
@@ -191,7 +195,7 @@ public class MainActivity extends Activity {
         try{
             SharedPreferences prefs=getSharedPreferences("winamp_playlist",MODE_PRIVATE);
             JSONArray items=new JSONArray(prefs.getString("tracks","[]"));
-            sortByName=prefs.getBoolean("sortByName",false);
+            sortMode=prefs.getInt("sortMode",0);
             for(int i=0;i<items.length();i++){
                 org.json.JSONObject item=items.getJSONObject(i);
                 Uri uri=Uri.parse(item.getString("uri"));
@@ -200,12 +204,12 @@ public class MainActivity extends Activity {
                     getContentResolver().openFileDescriptor(uri,"r").close();
                     tracks.add(uri);
                     names.add((names.size()+1)+".  "+name);
-                    addedAt.add(item.optLong("addedAt",0L));
+                    addedAt.add(item.optLong("addedAt",0L));String[] meta=readMetadata(uri,name);artists.add(item.optString("artist",meta[0]));trackTitles.add(item.optString("title",meta[1]));
                 }catch(Exception unavailable){
                     // Skip files whose original document permission or file is no longer available.
                 }
             }
-            if(tracks.size()!=items.length()) savePlaylist();
+            if(tracks.size()!=items.length()) savePlaylist();if(sortMode!=0)applySort(false);if(sortButton!=null)sortButton.setText(sortLabel());
         }catch(Exception ignored){}
     }
     private void moveTrack(int from,int to){
@@ -213,31 +217,31 @@ public class MainActivity extends Activity {
         Uri active=current>=0&&current<tracks.size()?tracks.get(current):null;
         Uri uri=tracks.remove(from); tracks.add(to,uri);
         String name=names.remove(from); names.add(to,name);
-        Long date=addedAt.remove(from); addedAt.add(to,date);
+        Long date=addedAt.remove(from); addedAt.add(to,date);String artist=artists.remove(from);artists.add(to,artist);String title=trackTitles.remove(from);trackTitles.add(to,title);
         if(active!=null) current=tracks.indexOf(active);
         renumberPlaylist(); savePlaylist(); adapter.notifyDataSetChanged();
     }
 
-    private void toggleSort(){
-        sortByName=!sortByName;
+    private String sortLabel(){return sortMode==0?"SORT: DATE":sortMode==1?"SORT: ARTIST":"SORT: TRACK";}
+    private void toggleSort(){sortMode=(sortMode+1)%3;applySort(true);}
+    private void applySort(boolean announce){
         Uri active=current>=0&&current<tracks.size()?tracks.get(current):null;
-        ArrayList<Integer> order=new ArrayList<>();
-        for(int i=0;i<tracks.size();i++) order.add(i);
-        java.util.Collections.sort(order,(a,b)->{
-            if(sortByName) return cleanTrackName(names.get(a)).compareToIgnoreCase(cleanTrackName(names.get(b)));
-            return Long.compare(addedAt.get(b),addedAt.get(a));
-        });
-        ArrayList<Uri> sortedTracks=new ArrayList<>();
-        ArrayList<String> sortedNames=new ArrayList<>();
-        ArrayList<Long> sortedDates=new ArrayList<>();
-        for(int index:order){sortedTracks.add(tracks.get(index));sortedNames.add(names.get(index));sortedDates.add(addedAt.get(index));}
-        tracks.clear();tracks.addAll(sortedTracks);names.clear();names.addAll(sortedNames);addedAt.clear();addedAt.addAll(sortedDates);
-        if(active!=null) current=tracks.indexOf(active);
-        renumberPlaylist();savePlaylist();adapter.notifyDataSetChanged();
-        toast(sortByName?"Sorted by name A–Z":"Sorted by date added (newest first)");
+        ArrayList<Integer> order=new ArrayList<>();for(int i=0;i<tracks.size();i++)order.add(i);
+        java.util.Collections.sort(order,(a,b)->sortMode==1?artists.get(a).compareToIgnoreCase(artists.get(b)):sortMode==2?trackTitles.get(a).compareToIgnoreCase(trackTitles.get(b)):Long.compare(addedAt.get(b),addedAt.get(a)));
+        ArrayList<Uri> t=new ArrayList<>();ArrayList<String> n=new ArrayList<>(),ar=new ArrayList<>(),ti=new ArrayList<>();ArrayList<Long>d=new ArrayList<>();
+        for(int i:order){t.add(tracks.get(i));n.add(names.get(i));ar.add(artists.get(i));ti.add(trackTitles.get(i));d.add(addedAt.get(i));}
+        tracks.clear();tracks.addAll(t);names.clear();names.addAll(n);artists.clear();artists.addAll(ar);trackTitles.clear();trackTitles.addAll(ti);addedAt.clear();addedAt.addAll(d);
+        if(active!=null)current=tracks.indexOf(active);renumberPlaylist();savePlaylist();adapter.notifyDataSetChanged();if(sortButton!=null)sortButton.setText(sortLabel());
+        if(announce)toast(sortMode==0?"Sorted by date added (newest first)":sortMode==1?"Sorted by artist A–Z":"Sorted by track title A–Z");
     }
+    private String[] readMetadata(Uri uri,String fallback){
+        String artist="Unknown artist",title=fallback;int dot=title.lastIndexOf('.');if(dot>0)title=title.substring(0,dot);int split=title.indexOf(" - ");if(split>0){artist=title.substring(0,split).trim();title=title.substring(split+3).trim();}
+        MediaMetadataRetriever m=new MediaMetadataRetriever();try{m.setDataSource(this,uri);String x=m.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST),y=m.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE);if(x!=null&&!x.trim().isEmpty())artist=x.trim();if(y!=null&&!y.trim().isEmpty())title=y.trim();}catch(Exception ignored){}finally{try{m.release();}catch(Exception ignored){}}
+        return new String[]{artist,title};
+    }
+    private String displayTrack(int i){return (i+1)+".  "+(artists.get(i).equals("Unknown artist")?trackTitles.get(i):artists.get(i)+" - "+trackTitles.get(i));}
 
-    private void playIndex(int index){if(index<0||index>=tracks.size())return;releasePlayer();current=index;prepared=false;adapter.notifyDataSetChanged();trackTitle.setText(names.get(index).replaceFirst("^\\d+\\.  ",""));status.setText("LOADING AUDIO...");player=new MediaPlayer(); player.setWakeMode(this,PowerManager.PARTIAL_WAKE_LOCK); PlaybackService.attachPlayer(player,tracks.get(index)); PlaybackService.startService(this); try{player.setDataSource(this,tracks.get(index));player.setOnPreparedListener(mp->{prepared=true;PlaybackService.setPrepared(true);mp.start();PlaybackService.refreshNotification();duration.setText(time(mp.getDuration()));status.setText("PLAYING     STEREO");initEqualizer(mp.getAudioSessionId());});player.setOnCompletionListener(mp->{if(repeat)playIndex(current);else next();});player.setOnErrorListener((mp,what,extra)->{toast("Unable to play this audio file");status.setText("PLAYBACK ERROR");return true;});player.prepareAsync();}catch(IOException e){toast("Could not open audio file");}}
+    private void playIndex(int index){if(index<0||index>=tracks.size())return;releasePlayer();current=index;prepared=false;adapter.notifyDataSetChanged();trackTitle.setText(displayTrack(index).replaceFirst("^\\d+\\.  ",""));status.setText("LOADING AUDIO...");PlaybackService.setTrackInfo(artists.get(index),trackTitles.get(index));player=new MediaPlayer(); player.setWakeMode(this,PowerManager.PARTIAL_WAKE_LOCK); PlaybackService.attachPlayer(player,tracks.get(index)); PlaybackService.startService(this); try{player.setDataSource(this,tracks.get(index));player.setOnPreparedListener(mp->{prepared=true;PlaybackService.setPrepared(true);mp.start();PlaybackService.setTrackInfo(artists.get(current),trackTitles.get(current));PlaybackService.refreshNotification();duration.setText(time(mp.getDuration()));status.setText("PLAYING     STEREO");initEqualizer(mp.getAudioSessionId());});player.setOnCompletionListener(mp->{if(repeat)playIndex(current);else next();});player.setOnErrorListener((mp,what,extra)->{toast("Unable to play this audio file");status.setText("PLAYBACK ERROR");return true;});player.prepareAsync();}catch(IOException e){toast("Could not open audio file");}}
     private void initEqualizer(int session){
         try {
             if(equalizer!=null) equalizer.release();
@@ -334,13 +338,13 @@ public class MainActivity extends Activity {
     private void pause(){if(player!=null&&prepared&&player.isPlaying()){player.pause();PlaybackService.refreshNotification();status.setText("PAUSED");}}
     private void stop(){if(player!=null&&prepared){player.pause();PlaybackService.refreshNotification();player.seekTo(0);status.setText("STOPPED");elapsed.setText("0:00");progress.setProgress(0);}}
     private void next(){if(tracks.isEmpty())return;int n=shuffle?(int)(Math.random()*tracks.size()):(current+1)%tracks.size();playIndex(n);}
-    private void removeCurrent(){if(current<0||current>=tracks.size())return;releasePlayer();tracks.remove(current);names.remove(current);addedAt.remove(current);current=-1;stopService(new Intent(this,PlaybackService.class));renumberPlaylist();savePlaylist();adapter.notifyDataSetChanged();trackTitle.setText("NO TRACK LOADED");status.setText("READY");elapsed.setText("0:00");duration.setText("0:00");progress.setProgress(0);}
+    private void removeCurrent(){if(current<0||current>=tracks.size())return;releasePlayer();tracks.remove(current);names.remove(current);addedAt.remove(current);artists.remove(current);trackTitles.remove(current);current=-1;stopService(new Intent(this,PlaybackService.class));renumberPlaylist();savePlaylist();adapter.notifyDataSetChanged();trackTitle.setText("NO TRACK LOADED");status.setText("READY");elapsed.setText("0:00");duration.setText("0:00");progress.setProgress(0);}
     private void exitApp(){
         releasePlayer();
         stopService(new Intent(this,PlaybackService.class));
         finishAndRemoveTask();
     }
-    private void clearPlaylist(){releasePlayer();stopService(new Intent(this,PlaybackService.class));tracks.clear();names.clear();addedAt.clear();current=-1;savePlaylist();adapter.notifyDataSetChanged();trackTitle.setText("NO TRACK LOADED");status.setText("READY");elapsed.setText("0:00");duration.setText("0:00");progress.setProgress(0);}
+    private void clearPlaylist(){releasePlayer();stopService(new Intent(this,PlaybackService.class));tracks.clear();names.clear();addedAt.clear();artists.clear();trackTitles.clear();current=-1;savePlaylist();adapter.notifyDataSetChanged();trackTitle.setText("NO TRACK LOADED");status.setText("READY");elapsed.setText("0:00");duration.setText("0:00");progress.setProgress(0);}
     private String cleanTrackName(String value){
         int marker=value.indexOf(".  ");
         return marker>=0?value.substring(marker+3):value;
