@@ -70,12 +70,12 @@ private val Background = Color(0xFF0B1413)
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { ToonJackApp() }
+        setContent { JackTunesApp() }
     }
 }
 
 @Composable
-private fun ToonJackApp() {
+private fun JackTunesApp() {
     val context = androidx.compose.ui.platform.LocalContext.current
     val recordingsDir = remember { File(context.filesDir, "recordings").apply { mkdirs() } }
     val recordings = remember {
@@ -123,7 +123,7 @@ private fun ToonJackApp() {
     fun startRecording() {
         try {
             val stamp = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US).format(Date())
-            val file = File(recordingsDir, "ToonJack_$stamp.m4a")
+            val file = File(recordingsDir, "JackTunes_$stamp.m4a")
             val newRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(context) else @Suppress("DEPRECATION") MediaRecorder()
             newRecorder.setAudioSource(MediaRecorder.AudioSource.MIC)
             newRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
@@ -231,7 +231,7 @@ private fun ToonJackApp() {
         AlertDialog(
             onDismissRequest = { deleteTarget = null },
             title = { Text("Delete this recording?") },
-            text = { Text("This permanently deletes ${deleteTarget?.nameWithoutExtension ?: "this take"} from Toon Jack on this phone. This cannot be undone.") },
+            text = { Text("This permanently deletes ${deleteTarget?.nameWithoutExtension ?: "this take"} from Jack Tunes on this phone. This cannot be undone.") },
             confirmButton = {
                 Button(
                     onClick = {
@@ -265,7 +265,7 @@ private fun ToonJackApp() {
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("TOON JACK  /  PRIVATE STUDIO", color = Teal, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                        Text("JACK TUNES  /  PRIVATE STUDIO", color = Teal, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                         Text("Make something real.", color = Ink, fontSize = 27.sp, fontWeight = FontWeight.Bold)
                         Text("Your voice. Your songs. Your space.", color = Muted, fontSize = 12.sp)
                     }
@@ -426,7 +426,7 @@ private fun ToonJackApp() {
                                 Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Column(Modifier.weight(1f)) {
-                                            Text(file.nameWithoutExtension.replace("ToonJack_", ""), color = Ink, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                            Text(file.nameWithoutExtension.replace("JackTunes_", ""), color = Ink, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
                                             Text(formatBytes(file.length()), color = Muted, fontSize = 10.sp)
                                         }
                                         if (renderingFileName == file.name) {
@@ -451,7 +451,7 @@ private fun ToonJackApp() {
                                             onClick = {
                                                 if (renderingFileName == null && autoTuneEnabled) {
                                                     renderingFileName = file.name
-                                                    message = "Tuning vocal… keep Toon Jack open."
+                                                    message = "Tuning vocal… keep Jack Tunes open."
                                                     val selectedRoot = autoTuneRoot
                                                     val selectedStrength = autoTuneStrength
                                                     val selectedScale = if (autoTuneMajor)
@@ -1043,7 +1043,7 @@ private fun LyricsScreen(onBack: () -> Unit, onRecordingSaved: (File) -> Unit) {
                 }
             }
         }
-        Text("Lyric drafts are stored privately inside Toon Jack on this device.", color = Muted, fontSize = 10.sp)
+        Text("Lyric drafts are stored privately inside Jack Tunes on this device.", color = Muted, fontSize = 10.sp)
     }
 }
 
@@ -1081,7 +1081,7 @@ private fun KaraokeRecordingScreen(title: String, lyrics: String, onBack: () -> 
     fun startTake() {
         try {
             val stamp = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US).format(Date())
-            val file = File(recordingsDir, "ToonJack_Karaoke_$stamp.m4a")
+            val file = File(recordingsDir, "JackTunes_Karaoke_$stamp.m4a")
             val newRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(context) else @Suppress("DEPRECATION") MediaRecorder()
             newRecorder.setAudioSource(MediaRecorder.AudioSource.MIC)
             newRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
@@ -1108,7 +1108,7 @@ private fun KaraokeRecordingScreen(title: String, lyrics: String, onBack: () -> 
         try {
             recorder?.stop()
             recordingFile?.let { if (it.exists() && it.length() > 0) onSaved(it) }
-            status = "Take saved in your Toon Jack recordings."
+            status = "Take saved in your Jack Tunes recordings."
         } catch (_: Exception) {
             recordingFile?.delete()
             status = "Recording was too short. Try again."
