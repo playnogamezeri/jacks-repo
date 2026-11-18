@@ -1,0 +1,129 @@
+package com.jackgray.winamp;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.database.Cursor;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.media.AudioManager;
+import android.media.MediaPlayer;
+import android.media.audiofx.Equalizer;
+import android.net.Uri;
+import android.os.Bundle;
+import android.provider.OpenableColumns;
+import android.view.Gravity;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.ListView;
+import android.widget.SeekBar;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Locale;
+
+public class MainActivity extends Activity {
+    private final int bg = Color.rgb(12, 12, 19), panel = Color.rgb(30, 30, 48), edge = Color.rgb(145, 139, 111);
+    private final int green = Color.rgb(34, 255, 38), white = Color.rgb(232, 232, 232), muted = Color.rgb(160, 160, 170);
+    private final ArrayList<Uri> tracks = new ArrayList<>();
+    private final ArrayList<String> names = new ArrayList<>();
+    private MediaPlayer player;
+    private Equalizer equalizer;
+    private int current = -1;
+    private boolean prepared = false, seeking = false, shuffle = false, repeat = false;
+    private TextView trackTitle, elapsed, duration, status;
+    private SeekBar progress;
+    private ListView playlist;
+    private ArrayAdapter<String> adapter;
+    private LinearLayout root;
+
+    @Override public void onCreate(Bundle state) {
+        super.onCreate(state);
+        getWindow().setStatusBarColor(bg); getWindow().setNavigationBarColor(bg);
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
+        buildUi();
+    }
+
+    private void buildUi() {
+        root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setPadding(dp(10),dp(8),dp(10),dp(8)); root.setBackgroundColor(bg);
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        LinearLayout content = new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL); content.setPadding(0,0,0,dp(12));
+        scroll.addView(content); root.addView(scroll, new LinearLayout.LayoutParams(-1,0,1)); setContentView(root);
+
+        TextView brand = text("WINAMP POCKET", 17, white, true); brand.setGravity(Gravity.CENTER); brand.setPadding(0,dp(5),0,dp(8));
+        content.addView(brand);
+        LinearLayout main = panel("PLAYER"); content.addView(main);
+        LinearLayout screen = new LinearLayout(this); screen.setOrientation(LinearLayout.VERTICAL); screen.setPadding(dp(10),dp(8),dp(10),dp(8)); screen.setBackgroundColor(Color.BLACK);
+        main.addView(screen, matchWrap());
+        trackTitle = text("NO TRACK LOADED", 17, green, true); trackTitle.setSingleLine(true); trackTitle.setGravity(Gravity.CENTER_VERTICAL); screen.addView(trackTitle);
+        status = text("STEREO     44 kHz     READY", 11, muted, true); screen.addView(status);
+        LinearLayout timeRow = new LinearLayout(this); timeRow.setGravity(Gravity.CENTER_VERTICAL);
+        elapsed = text("0:00",12,green,true); duration = text("0:00",12,green,true);
+        timeRow.addView(elapsed); progress = new SeekBar(this); progress.setMax(1000); progress.setProgressTintList(android.content.res.ColorStateList.valueOf(green)); progress.setThumbTintList(android.content.res.ColorStateList.valueOf(white));
+        timeRow.addView(progress,new LinearLayout.LayoutParams(0,dp(28),1)); timeRow.addView(duration); screen.addView(timeRow);
+        progress.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){ public void onProgressChanged(SeekBar b,int v,boolean u){} public void onStartTrackingTouch(SeekBar b){seeking=true;} public void onStopTrackingTouch(SeekBar b){ if(player!=null&&prepared) player.seekTo((int)(player.getDuration()*b.getProgress()/1000f)); seeking=false; }});
+
+        LinearLayout controls = new LinearLayout(this); controls.setGravity(Gravity.CENTER); controls.setPadding(0,dp(7),0,dp(3));
+        addControl(controls,"|◀",()->playIndex(Math.max(0,current-1)));
+        addControl(controls,"▶",()->playOrResume()); addControl(controls,"Ⅱ",()->pause()); addControl(controls,"■",()->stop()); addControl(controls,"▶|",()->next());
+        main.addView(controls);
+        LinearLayout modes = new LinearLayout(this); modes.setGravity(Gravity.CENTER); addControl(modes,"SHUFFLE",()->{shuffle=!shuffle; toast("Shuffle "+(shuffle?"ON":"OFF"));}); addControl(modes,"REPEAT",()->{repeat=!repeat; toast("Repeat "+(repeat?"ON":"OFF"));});
+        main.addView(modes);
+        LinearLayout volRow = new LinearLayout(this); volRow.setGravity(Gravity.CENTER_VERTICAL); volRow.setPadding(dp(8),dp(2),dp(8),dp(2));
+        TextView volLabel = text("VOL",10,muted,true); volRow.addView(volLabel);
+        SeekBar volume = new SeekBar(this); volume.setMax(100); volume.setProgress(80); volume.setProgressTintList(android.content.res.ColorStateList.valueOf(green)); volume.setThumbTintList(android.content.res.ColorStateList.valueOf(white));
+        volRow.addView(volume,new LinearLayout.LayoutParams(0,dp(30),1)); main.addView(volRow);
+        volume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int v,boolean user){if(player!=null)player.setVolume(v/100f,v/100f);}public void onStartTrackingTouch(SeekBar b){}public void onStopTrackingTouch(SeekBar b){}});
+
+        LinearLayout eq = panel("WINAMP EQUALIZER"); content.addView(eq);
+        LinearLayout eqButtons = new LinearLayout(this); eqButtons.setGravity(Gravity.CENTER_VERTICAL);
+        addControl(eqButtons,"ON",()->{if(equalizer!=null){equalizer.setEnabled(true);toast("Equalizer on");}else toast("Start a track to activate equalizer");});
+        addControl(eqButtons,"OFF",()->{if(equalizer!=null)equalizer.setEnabled(false);});
+        eq.addView(eqButtons);
+        LinearLayout bands = new LinearLayout(this); bands.setGravity(Gravity.CENTER); bands.setPadding(0,dp(3),0,dp(5));
+        String[] labels={"60","170","310","600","1K","3K","6K","12K","14K","16K"};
+        for(String label:labels){ LinearLayout col=new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL); col.setGravity(Gravity.CENTER);
+            SeekBar s=new SeekBar(this); s.setMax(100); s.setProgress(50); s.setRotation(-90); s.setProgressTintList(android.content.res.ColorStateList.valueOf(green)); s.setThumbTintList(android.content.res.ColorStateList.valueOf(white));
+            col.addView(s,new LinearLayout.LayoutParams(dp(27),dp(104)));
+            TextView t=text(label,9,muted,true); col.addView(t); bands.addView(col,new LinearLayout.LayoutParams(0,dp(132),1));
+            final int bandIndex=bands.getChildCount()-1;
+            s.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int v,boolean u){if(equalizer!=null&&u){short[] range=equalizer.getBandLevelRange(); short level=(short)(range[0]+(range[1]-range[0])*v/100); if(bandIndex<equalizer.getNumberOfBands())equalizer.setBandLevel((short)bandIndex,level);}} public void onStartTrackingTouch(SeekBar b){} public void onStopTrackingTouch(SeekBar b){}});
+        }
+        eq.addView(bands);
+
+        LinearLayout pl = panel("WINAMP PLAYLIST"); content.addView(pl);
+        playlist = new ListView(this); playlist.setBackgroundColor(Color.BLACK); playlist.setDividerHeight(dp(1)); playlist.setDivider(new android.graphics.drawable.ColorDrawable(Color.rgb(45,45,45)));
+        adapter = new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1,names){@Override public View getView(int p,View c,ViewGroup parent){TextView v=(TextView)super.getView(p,c,parent);v.setTextColor(p==current?white:green);v.setTextSize(15);v.setTypeface(Typeface.MONOSPACE,Typeface.BOLD);v.setSingleLine(true);v.setPadding(dp(8),dp(7),dp(8),dp(7));v.setBackgroundColor(Color.BLACK);return v;}};
+        playlist.setAdapter(adapter); playlist.setOnItemClickListener((a,v,pos,id)->playIndex(pos)); pl.addView(playlist,new LinearLayout.LayoutParams(-1,dp(235)));
+        LinearLayout actions=new LinearLayout(this); actions.setGravity(Gravity.CENTER); addControl(actions,"ADD FILES",()->pickFiles()); addControl(actions,"REMOVE",()->removeCurrent()); addControl(actions,"CLEAR",()->clearPlaylist()); pl.addView(actions);
+        TextView foot=text("LOCAL AUDIO PLAYER  •  WINAMP-INSPIRED",10,muted,false); foot.setGravity(Gravity.CENTER); foot.setPadding(0,dp(8),0,0); content.addView(foot);
+    }
+
+    private LinearLayout panel(String title){ LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(5),dp(4),dp(5),dp(5));box.setBackground(new android.graphics.drawable.GradientDrawable(){ {setColor(panel);setStroke(dp(1),edge);setCornerRadius(dp(3));} }); TextView h=text(title,13,white,true);h.setGravity(Gravity.CENTER);h.setPadding(0,dp(3),0,dp(5));box.addView(h); LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.bottomMargin=dp(9);box.setLayoutParams(lp);return box; }
+    private TextView text(String s,int size,int color,boolean bold){TextView t=new TextView(this);t.setText(s);t.setTextSize(size);t.setTextColor(color);t.setTypeface(bold?Typeface.MONOSPACE:Typeface.DEFAULT,bold?Typeface.BOLD:Typeface.NORMAL);return t;}
+    private LinearLayout.LayoutParams matchWrap(){return new LinearLayout.LayoutParams(-1,-2);}
+    private int dp(float n){return (int)(n*getResources().getDisplayMetrics().density+0.5f);}
+    private void addControl(LinearLayout row,String label,Runnable action){Button b=new Button(this);b.setText(label);b.setTextSize(10);b.setTextColor(white);b.setAllCaps(false);b.setPadding(dp(5),0,dp(5),0);b.setMinWidth(0);b.setMinimumWidth(dp(42));b.setMinHeight(dp(38));b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.rgb(66,67,85)));b.setOnClickListener(v->action.run());LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,dp(40));lp.setMargins(dp(2),dp(2),dp(2),dp(2));row.addView(b,lp);}
+
+    private void pickFiles(){Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.setType("audio/*");i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);i.addCategory(Intent.CATEGORY_OPENABLE);startActivityForResult(i,100);}
+    @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==100&&result==RESULT_OK&&data!=null){if(data.getClipData()!=null){for(int n=0;n<data.getClipData().getItemCount();n++)addUri(data.getClipData().getItemAt(n).getUri());}else if(data.getData()!=null)addUri(data.getData());adapter.notifyDataSetChanged();if(current<0&&!tracks.isEmpty())playIndex(0);}}
+    private void addUri(Uri u){try{getContentResolver().takePersistableUriPermission(u,Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(Exception ignored){}String name="Audio track";Cursor c=getContentResolver().query(u,null,null,null,null);if(c!=null){if(c.moveToFirst()){int k=c.getColumnIndex(OpenableColumns.DISPLAY_NAME);if(k>=0)name=c.getString(k);}c.close();}tracks.add(u);names.add((names.size()+1)+".  "+name);}
+    private void playIndex(int index){if(index<0||index>=tracks.size())return;releasePlayer();current=index;prepared=false;adapter.notifyDataSetChanged();trackTitle.setText(names.get(index).replaceFirst("^\\d+\\.  ",""));status.setText("LOADING AUDIO...");player=new MediaPlayer();try{player.setDataSource(this,tracks.get(index));player.setOnPreparedListener(mp->{prepared=true;mp.start();duration.setText(time(mp.getDuration()));status.setText("PLAYING     STEREO");initEqualizer(mp.getAudioSessionId());});player.setOnCompletionListener(mp->{if(repeat)playIndex(current);else next();});player.setOnErrorListener((mp,what,extra)->{toast("Unable to play this audio file");status.setText("PLAYBACK ERROR");return true;});player.prepareAsync();}catch(IOException e){toast("Could not open audio file");}}
+    private void initEqualizer(int session){try{if(equalizer!=null)equalizer.release();equalizer=new Equalizer(0,session);equalizer.setEnabled(true);}catch(Exception ignored){equalizer=null;}}
+    private void playOrResume(){if(player==null){if(!tracks.isEmpty())playIndex(current<0?0:current);else pickFiles();}else if(prepared&&!player.isPlaying()){player.start();status.setText("PLAYING     STEREO");}}
+    private void pause(){if(player!=null&&prepared&&player.isPlaying()){player.pause();status.setText("PAUSED");}}
+    private void stop(){if(player!=null&&prepared){player.pause();player.seekTo(0);status.setText("STOPPED");elapsed.setText("0:00");progress.setProgress(0);}}
+    private void next(){if(tracks.isEmpty())return;int n=shuffle?(int)(Math.random()*tracks.size()):(current+1)%tracks.size();playIndex(n);}
+    private void removeCurrent(){if(current<0||current>=tracks.size())return;releasePlayer();tracks.remove(current);names.remove(current);current=-1;adapter.notifyDataSetChanged();trackTitle.setText("NO TRACK LOADED");status.setText("READY");elapsed.setText("0:00");duration.setText("0:00");progress.setProgress(0);}
+    private void clearPlaylist(){releasePlayer();tracks.clear();names.clear();current=-1;adapter.notifyDataSetChanged();trackTitle.setText("NO TRACK LOADED");status.setText("READY");elapsed.setText("0:00");duration.setText("0:00");progress.setProgress(0);}
+    private void releasePlayer(){if(player!=null){try{player.stop();}catch(Exception ignored){}player.release();player=null;}prepared=false;if(equalizer!=null){equalizer.release();equalizer=null;}}
+    private String time(int ms){int sec=Math.max(0,ms/1000);return String.format(Locale.US,"%d:%02d",sec/60,sec%60);}
+    private void toast(String s){Toast.makeText(this,s,Toast.LENGTH_SHORT).show();}
+    @Override protected void onResume(){super.onResume();root.post(tick);}
+    private final Runnable tick=new Runnable(){public void run(){if(player!=null&&prepared){try{int pos=player.getCurrentPosition(),len=player.getDuration();if(!seeking){progress.setProgress(len>0?(int)(pos*1000f/len):0);elapsed.setText(time(pos));duration.setText(time(len));}}catch(Exception ignored){}}if(root!=null)root.postDelayed(this,400);}};
+    @Override protected void onDestroy(){if(root!=null)root.removeCallbacks(tick);releasePlayer();super.onDestroy();}
+}
