@@ -2,11 +2,14 @@ package com.jackgray.winamp;
 
 import android.app.Activity;
 import android.graphics.Color;
+import android.graphics.Canvas;
+import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.media.audiofx.BassBoost;
 import android.media.audiofx.Equalizer;
 import android.media.audiofx.PresetReverb;
 import android.media.audiofx.Virtualizer;
+import android.media.audiofx.Visualizer;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
@@ -25,6 +28,9 @@ public class StudioActivity extends Activity {
     private BassBoost bass;
     private Virtualizer virtualizer;
     private PresetReverb reverb;
+    private Visualizer visualizer;
+    private AnalyzerView analyzer;
+    private boolean reverbEnabled=false, bassEnabled=true, virtualizerEnabled=true;
     private int reverbIndex=0;
     private final short[] reverbPresets={PresetReverb.PRESET_NONE,PresetReverb.PRESET_SMALLROOM,
             PresetReverb.PRESET_MEDIUMROOM,PresetReverb.PRESET_LARGEROOM,
@@ -44,6 +50,7 @@ public class StudioActivity extends Activity {
         header();
         int session=getIntent().getIntExtra("audio_session",-1);
         if(session>0) initializeEffects(session);
+        buildAnalyzer(session);
         if(!effectsReady) {
             TextView notice=label("PLAY A TRACK IN JACK TUNES FIRST. LIVE STUDIO EFFECTS ATTACH TO THE ACTIVE PLAYBACK SESSION.",12,muted,true);
             notice.setPadding(dp(10),dp(14),dp(10),dp(14)); content.addView(notice);
@@ -56,28 +63,73 @@ public class StudioActivity extends Activity {
     }
 
     private void header(){
-        TextView brand=label("JACK TUNERS // STUDIO",20,cyan,true);
+        TextView brand=label("CYBER // JACK TUNERS",22,cyan,true);
         brand.setGravity(Gravity.CENTER); brand.setPadding(0,dp(10),0,dp(5)); content.addView(brand);
         TextView sub=label("REAL-TIME AUDIO PROCESSING CONSOLE",10,muted,true);
         sub.setGravity(Gravity.CENTER); content.addView(sub);
         Button back=button("← BACK TO JACK TUNES",()->finish());
         content.addView(back);
-        sectionNote("SIGNAL CHAIN  •  PLAYBACK SESSION");
+        sectionNote("◈ SIGNAL CHAIN     ◈ LIVE DSP     ◈ SESSION LINKED");
     }
 
     private void initializeEffects(int session){
         try{
-            eq=new Equalizer(0,session); eq.setEnabled(true);
-            bass=new BassBoost(0,session); bass.setEnabled(true);
-            virtualizer=new Virtualizer(0,session); virtualizer.setEnabled(true);
-            reverb=new PresetReverb(0,session); reverb.setPreset(PresetReverb.PRESET_NONE); reverb.setEnabled(true);
-            effectsReady=true;
+            try { eq=new Equalizer(0,session); eq.setEnabled(true); } catch(Exception ignored) { eq=null; }
+            try { bass=new BassBoost(0,session); bass.setEnabled(true); } catch(Exception ignored) { bass=null; }
+            try { virtualizer=new Virtualizer(0,session); virtualizer.setEnabled(true); } catch(Exception ignored) { virtualizer=null; }
+            // PresetReverb is auxiliary: create it on output mix session 0 and attach it to MediaPlayer.
+            try { reverb=new PresetReverb(0,0); reverb.setPreset(PresetReverb.PRESET_NONE); reverb.setEnabled(false); } catch(Exception ignored) { reverb=null; }
+            effectsReady=(eq!=null||bass!=null||virtualizer!=null||reverb!=null);
         }catch(Exception e){
             releaseEffects();
             Toast.makeText(this,"Some audio effects are unavailable on this device",Toast.LENGTH_LONG).show();
         }
     }
 
+
+    private void buildAnalyzer(int session){
+        LinearLayout box=section("00 // LIVE SIGNAL ANALYZER");
+        analyzer=new AnalyzerView();
+        box.addView(analyzer,new LinearLayout.LayoutParams(-1,dp(105)));
+        box.addView(label("LIVE FFT OUTPUT  •  PLAYBACK SPECTRUM",9,muted,true));
+        if(session<=0){box.addView(label("PLAY A TRACK TO CONNECT THE ANALYZER.",10,muted,false));return;}
+        try {
+            visualizer=new Visualizer(session);
+            int[] range=Visualizer.getCaptureSizeRange();
+            visualizer.setCaptureSize(range[1]);
+            visualizer.setDataCaptureListener(new Visualizer.OnDataCaptureListener(){
+                public void onWaveFormDataCapture(Visualizer v,byte[] data,int rate){}
+                public void onFftDataCapture(Visualizer v,byte[] data,int rate){if(analyzer!=null)analyzer.setFft(data);}
+            },Math.max(Visualizer.getMaxCaptureRate()/2,1),false,true);
+            visualizer.setEnabled(true);
+            box.addView(button("ANALYZER ON / OFF",()->{try{boolean next=!visualizer.getEnabled();visualizer.setEnabled(next);toast(next?"Analyzer running":"Analyzer paused");}catch(Exception e){toast("Analyzer unavailable");}}));
+        } catch(Exception e) {
+            if(visualizer!=null){try{visualizer.release();}catch(Exception ignored){}visualizer=null;}
+            box.addView(label("LIVE CAPTURE NOT SUPPORTED BY THIS DEVICE / SESSION.",10,muted,false));
+        }
+    }
+
+    private class AnalyzerView extends View {
+        private final Paint paint=new Paint(3);
+        private byte[] bins=new byte[0];
+        AnalyzerView(){super(StudioActivity.this);setBackgroundColor(Color.rgb(1,5,10));}
+        void setFft(byte[] data){bins=data.clone();postInvalidate();}
+        @Override protected void onDraw(Canvas canvas){
+            super.onDraw(canvas);
+            float w=getWidth(),h=getHeight();
+            int n=Math.min(64,bins.length/2);
+            if(n<=1){paint.setColor(muted);paint.setTextSize(dp(10));canvas.drawText("WAITING FOR AUDIO SIGNAL...",dp(8),h/2,paint);return;}
+            float gap=dp(2),bar=(w-gap*(n+1))/n;
+            for(int i=1;i<=n;i++){
+                int re=bins[i*2],im=bins[i*2+1];
+                double mag=Math.sqrt(re*re+im*im);
+                float level=(float)Math.min(1.0,mag/90.0);
+                float bh=Math.max(dp(2),level*(h-dp(8)));
+                float x=gap+i*(bar+gap);
+                paint.setColor(cyan);canvas.drawRect(x,h-bh,x+bar,h,paint);
+            }
+        }
+    }
 
     private void buildWaveEditor(){
         LinearLayout box=section("01 // WAVEFORM EDITOR");
@@ -89,8 +141,8 @@ public class StudioActivity extends Activity {
         LinearLayout box=section("02 // GRAPHIC EQUALIZER");
         if(!effectsReady){box.addView(label("Unavailable until a track is playing.",11,muted,false));return;}
         LinearLayout actions=new LinearLayout(this); actions.setGravity(Gravity.CENTER);
-        actions.addView(button("FLAT",()->{try{eq.usePreset((short)0);renderBands();}catch(Exception e){toast("Preset unavailable");}}));
-        actions.addView(button("ENABLE / BYPASS",()->{eqEnabled=!eqEnabled;eq.setEnabled(eqEnabled);toast(eqEnabled?"Equalizer enabled":"Equalizer bypassed");}));
+        actions.addView(button("FLAT / RESET",()->{try{boolean found=false;for(short i=0;i<eq.getNumberOfPresets();i++){String n=eq.getPresetName(i);if(n!=null&&(n.equalsIgnoreCase("normal")||n.equalsIgnoreCase("flat"))){eq.usePreset(i);found=true;break;}}if(!found){short[] r=eq.getBandLevelRange();for(short i=0;i<eq.getNumberOfBands();i++)eq.setBandLevel(i,(short)Math.max(r[0],Math.min(r[1],0)));}renderBands();}catch(Exception e){toast("Flat reset unavailable");}}));
+        actions.addView(button(eqEnabled?"EQ: ON / TAP TO BYPASS":"EQ: BYPASSED / TAP TO ENABLE",()->{try{eqEnabled=!eqEnabled;eq.setEnabled(eqEnabled);renderBands();}catch(Exception e){toast("Equalizer control unavailable");}}));
         box.addView(actions);
         renderBandsInto(box);
     }
@@ -130,26 +182,39 @@ public class StudioActivity extends Activity {
 
     private void buildDynamics(){
         LinearLayout box=section("03 // LOW-FREQUENCY CONTROL");
-        if(!effectsReady){box.addView(label("Bass processing unavailable.",11,muted,false));return;}
-        addEffectToggle(box,"BASS BOOST",bass);
+        if(bass==null){box.addView(label("BASS BOOST NOT SUPPORTED BY THIS DEVICE.",11,muted,false));return;}
+        box.addView(button(bassEnabled?"BASS BOOST: ON / TAP TO BYPASS":"BASS BOOST: OFF / TAP TO ENABLE",()->{try{bassEnabled=!bassEnabled;bass.setEnabled(bassEnabled);toast(bassEnabled?"Bass boost enabled":"Bass boost bypassed");}catch(Exception e){toast("Bass boost unavailable");}}));
         addStrengthSlider(box,"BASS INTENSITY",bass);
     }
 
     private void buildSpace(){
         LinearLayout box=section("04 // STEREO & AMBIENCE");
-        if(!effectsReady){box.addView(label("Spatial effects unavailable.",11,muted,false));return;}
-        addEffectToggle(box,"STEREO VIRTUALIZER",virtualizer);
-        addStrengthSlider(box,"STEREO WIDTH",virtualizer);
+        if(virtualizer!=null){
+            box.addView(button(virtualizerEnabled?"VIRTUALIZER: ON / TAP TO BYPASS":"VIRTUALIZER: OFF / TAP TO ENABLE",()->{try{virtualizerEnabled=!virtualizerEnabled;virtualizer.setEnabled(virtualizerEnabled);toast(virtualizerEnabled?"Stereo processing enabled":"Stereo processing bypassed");}catch(Exception e){toast("Virtualizer unavailable");}}));
+            addStrengthSlider(box,"STEREO WIDTH",virtualizer);
+        } else box.addView(label("VIRTUALIZER NOT SUPPORTED BY THIS DEVICE.",10,muted,false));
         LinearLayout row=new LinearLayout(this); row.setGravity(Gravity.CENTER_VERTICAL);
-        TextView preset=label("REVERB: "+reverbNames[reverbIndex],11,cyan,true);
+        TextView preset=label(reverb==null?"REVERB: NOT SUPPORTED":"REVERB: "+reverbNames[reverbIndex],11,cyan,true);
         row.addView(preset,new LinearLayout.LayoutParams(0,dp(42),1));
         row.addView(button("NEXT SPACE",()->{
+            if(reverb==null){toast("Reverb unavailable");return;}
             reverbIndex=(reverbIndex+1)%reverbPresets.length;
             try{reverb.setPreset(reverbPresets[reverbIndex]);preset.setText("REVERB: "+reverbNames[reverbIndex]);}
             catch(Exception e){toast("Reverb preset unavailable");}
         }));
         box.addView(row);
-        box.addView(button("REVERB ON / OFF",()->toggle(reverb.getEnabled(),v->reverb.setEnabled(v))));
+        if(reverb!=null)box.addView(button("REVERB: OFF / TAP TO ENABLE",()->{
+            try{
+                if(!reverbEnabled){
+                    if(!PlaybackService.attachAuxEffect(reverb.getId())){toast("Start playback to attach reverb");return;}
+                    reverb.setEnabled(true);reverbEnabled=true;
+                }else{
+                    PlaybackService.detachAuxEffect();reverb.setEnabled(false);reverbEnabled=false;
+                }
+                toast(reverbEnabled?"Reverb enabled":"Reverb bypassed");
+            }catch(Exception e){toast("Reverb routing unavailable");}
+        }));
+        else box.addView(label("AUXILIARY REVERB NOT SUPPORTED.",10,muted,false));
     }
 
     private interface ToggleAction{void set(boolean value);}
@@ -187,7 +252,7 @@ public class StudioActivity extends Activity {
         LinearLayout box=new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(9),dp(8),dp(9),dp(10));
         android.graphics.drawable.GradientDrawable shape=new android.graphics.drawable.GradientDrawable();
-        shape.setColor(panel); shape.setStroke(dp(1),edge); shape.setCornerRadius(dp(5)); box.setBackground(shape);
+        shape.setColor(panel); shape.setStroke(dp(1),edge); shape.setCornerRadius(dp(1)); box.setBackground(shape);
         LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2); lp.topMargin=dp(10); box.setLayoutParams(lp);
         box.addView(label(title,13,white,true)); content.addView(box); return box;
     }
@@ -198,7 +263,10 @@ public class StudioActivity extends Activity {
     }
     private Button button(String s,Runnable r){
         Button b=new Button(this);b.setText(s);b.setTextColor(white);b.setTextSize(10);b.setAllCaps(false);
-        b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.rgb(8,55,72)));
+        b.setTypeface(Typeface.MONOSPACE,Typeface.BOLD);
+        android.graphics.drawable.GradientDrawable shape=new android.graphics.drawable.GradientDrawable();
+        shape.setColor(Color.rgb(3,35,49));shape.setStroke(dp(1),cyan);shape.setCornerRadius(dp(1));
+        b.setBackground(shape);b.setPadding(dp(8),dp(5),dp(8),dp(5));
         b.setOnClickListener(v->r.run());return b;
     }
     private void tint(SeekBar b){b.setProgressTintList(android.content.res.ColorStateList.valueOf(cyan));b.setThumbTintList(android.content.res.ColorStateList.valueOf(white));}
@@ -206,6 +274,8 @@ public class StudioActivity extends Activity {
     private void toast(String s){Toast.makeText(this,s,Toast.LENGTH_SHORT).show();}
     private void footer(){TextView t=label("JACK TUNES AUDIO ENGINE  //  LIVE FX",9,muted,true);t.setGravity(Gravity.CENTER);t.setPadding(0,dp(16),0,dp(6));content.addView(t);}
     private void releaseEffects(){
+        if(visualizer!=null){try{visualizer.setEnabled(false);visualizer.release();}catch(Exception ignored){}visualizer=null;}
+        if(reverbEnabled)PlaybackService.detachAuxEffect();
         if(eq!=null){eq.release();eq=null;} if(bass!=null){bass.release();bass=null;}
         if(virtualizer!=null){virtualizer.release();virtualizer=null;}
         if(reverb!=null){reverb.release();reverb=null;} effectsReady=false;
