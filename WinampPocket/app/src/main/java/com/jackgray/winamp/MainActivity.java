@@ -85,9 +85,12 @@ public class MainActivity extends Activity {
         scroll.addView(content); root.addView(scroll, new LinearLayout.LayoutParams(-1,0,1)); setContentView(root);
 
         LinearLayout topBar = new LinearLayout(this); topBar.setGravity(Gravity.CENTER_VERTICAL);
+        topBar.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout menuHeader = new LinearLayout(this); menuHeader.setGravity(Gravity.LEFT|Gravity.CENTER_VERTICAL);
+        addControl(menuHeader,"MENU ▼",()->toggleMenu());
+        topBar.addView(menuHeader,new LinearLayout.LayoutParams(-1,-2));
         TextView brand = text("JACK TUNES", 17, white, true); brand.setGravity(Gravity.CENTER); brand.setPadding(0,dp(5),0,dp(8));
-        topBar.addView(brand,new LinearLayout.LayoutParams(0,-2,1));
-        addControl(topBar,"MENU ▼",()->toggleMenu());
+        topBar.addView(brand,new LinearLayout.LayoutParams(-1,-2));
         content.addView(topBar);
         menuPanel = new LinearLayout(this); menuPanel.setOrientation(LinearLayout.VERTICAL); menuPanel.setPadding(dp(6),dp(5),dp(6),dp(5)); menuPanel.setBackgroundColor(panel); menuPanel.setVisibility(View.GONE);
         LinearLayout menuRow1 = new LinearLayout(this); menuRow1.setGravity(Gravity.CENTER);
@@ -99,6 +102,9 @@ public class MainActivity extends Activity {
         addControl(menuRow2,"EXPORT CURRENT TRACK",()->exportCurrentTrack());
         menuPanel.addView(menuRow2);
         content.addView(menuPanel);
+        LinearLayout exitRow = new LinearLayout(this); exitRow.setGravity(Gravity.LEFT);
+        addControl(exitRow,"EXIT",()->exitApp());
+        content.addView(exitRow);
         LinearLayout main = panel("PLAYER"); content.addView(main);
         LinearLayout screen = new LinearLayout(this); screen.setOrientation(LinearLayout.VERTICAL); screen.setPadding(dp(10),dp(8),dp(10),dp(8)); screen.setBackgroundColor(Color.BLACK);
         main.addView(screen, matchWrap());
@@ -174,7 +180,7 @@ public class MainActivity extends Activity {
             return false;
         });
         pl.addView(playlist,new LinearLayout.LayoutParams(-1,dp(235)));
-        LinearLayout actions=new LinearLayout(this); actions.setGravity(Gravity.CENTER); addControl(actions,"ADD FILES",()->pickFiles()); addControl(actions,"REMOVE",()->removeCurrent()); sortButton=addControl(actions,sortLabel(),()->toggleSort()); addControl(actions,"CLEAR",()->clearPlaylist()); addControl(actions,"EXIT",()->exitApp()); pl.addView(actions);
+        LinearLayout actions=new LinearLayout(this); actions.setGravity(Gravity.CENTER); addControl(actions,"ADD FILES",()->pickFiles()); addControl(actions,"REMOVE",()->removeCurrent()); sortButton=addControl(actions,sortLabel(),()->toggleSort()); addControl(actions,"CLEAR",()->clearPlaylist()); pl.addView(actions);
         TextView foot=text("LOCAL AUDIO PLAYER  •  WINAMP-INSPIRED",10,muted,false); foot.setGravity(Gravity.CENTER); foot.setPadding(0,dp(8),0,0); content.addView(foot);
     }
 
