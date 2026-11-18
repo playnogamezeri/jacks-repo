@@ -93,7 +93,6 @@ public class MainActivity extends Activity {
         LinearLayout menuRow1 = new LinearLayout(this); menuRow1.setGravity(Gravity.CENTER);
         addControl(menuRow1,"SAVE PLAYLIST",()->savePlaylistAsFile());
         addControl(menuRow1,"OPEN PLAYLIST",()->openPlaylistFile());
-        addControl(menuRow1,"PLAY YOUTUBE LINK",()->playYoutubeLink());
         menuPanel.addView(menuRow1);
         LinearLayout menuRow2 = new LinearLayout(this); menuRow2.setGravity(Gravity.CENTER);
         addControl(menuRow2,"RENAME PLAYLIST",()->renamePlaylist());
@@ -238,19 +237,6 @@ public class MainActivity extends Activity {
         }catch(Exception e){
             toast("Could not export audio file");
         }
-    }
-
-    private void playYoutubeLink(){
-        android.widget.EditText field=new android.widget.EditText(this);
-        field.setSingleLine(true); field.setHint("Paste a YouTube video link");
-        new android.app.AlertDialog.Builder(this).setTitle("Play YouTube link").setView(field)
-            .setNegativeButton("CANCEL",null).setPositiveButton("OPEN",(d,w)->{
-                String link=field.getText().toString().trim();
-                if(!link.startsWith("https://")&&!link.startsWith("http://")) link="https://"+link;
-                if(link.matches("https?://(www\\.)?(m\\.)?(youtube\\.com|youtu\\.be)/.*")){
-                    try{Intent playerIntent=new Intent(this,YoutubePlayerActivity.class);playerIntent.putExtra("youtube_url",link);startActivity(playerIntent);}catch(Exception e){toast("Could not open YouTube player");}
-                }else toast("Enter a valid YouTube URL");
-            }).show();
     }
 
     private void writePlaylistFile(Uri uri){
