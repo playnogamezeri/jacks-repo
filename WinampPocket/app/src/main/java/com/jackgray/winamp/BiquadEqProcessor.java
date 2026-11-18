@@ -5,14 +5,13 @@ package com.jackgray.winamp;
  * RBJ cookbook biquads: peaking, high-pass and low-pass.
  */
 public final class BiquadEqProcessor {
-    private static final double[] FREQUENCIES={80.0,250.0,1000.0,4000.0,12000.0};
     private final int sampleRate, channels;
     private final double[] gainsDb;
     private final Filter[][] filters;
     private final boolean highPassEnabled, lowPassEnabled;
     private final double highPassHz, lowPassHz;
 
-    public BiquadEqProcessor(int sampleRate,int channels,double[] gainsDb,
+    public BiquadEqProcessor(int sampleRate,int channels,double[] gainsDb,double[] frequencies,double[] qValues,
                              boolean highPassEnabled,double highPassHz,
                              boolean lowPassEnabled,double lowPassHz) {
         this.sampleRate=sampleRate;this.channels=channels;
@@ -23,8 +22,8 @@ public final class BiquadEqProcessor {
         for(int c=0;c<channels;c++){
             java.util.ArrayList<Filter> chain=new java.util.ArrayList<>();
             if(highPassEnabled)chain.add(Filter.highPass(sampleRate,highPassHz,0.707));
-            for(int i=0;i<FREQUENCIES.length;i++)if(Math.abs(this.gainsDb[i])>0.01)
-                chain.add(Filter.peak(sampleRate,FREQUENCIES[i],1.0,this.gainsDb[i]));
+            for(int i=0;i<this.gainsDb.length;i++)if(Math.abs(this.gainsDb[i])>0.01)
+                chain.add(Filter.peak(sampleRate,frequencies[i],qValues[i],this.gainsDb[i]));
             if(lowPassEnabled)chain.add(Filter.lowPass(sampleRate,lowPassHz,0.707));
             filters[c]=chain.toArray(new Filter[0]);
         }
