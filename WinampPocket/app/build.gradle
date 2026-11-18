@@ -20,9 +20,9 @@ android {
         applicationId 'com.jackgray.winamp'
         minSdk 23
         targetSdk 35
-        versionCode 28
-        versionName '2.2.1'
+        versionCode 29
+        versionName '2.2.2'
     }
 }
 
-// DJ Tune Jack 2.2.1 Real-Time Audio Preview Fix.
+// DJ Tune Jack 2.2.2 Jamendo Online Music Library.
