@@ -1,0 +1,26 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Metallic music disc -->
+    <path
+        android:fillColor="#263449"
+        android:pathData="M54,10 A44,44 0,1 0,54 98 A44,44 0,1 0,54 10" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#9AA8BA"
+        android:strokeWidth="1.8"
+        android:pathData="M54,17 A37,37 0,1 0,54 91 A37,37 0,1 0,54 17" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#53647B"
+        android:strokeWidth="1"
+        android:pathData="M54,24 A30,30 0,1 0,54 84 A30,30 0,1 0,54 24" />
+    <!-- Neon green equalizer bars -->
+    <path android:fillColor="#35F36B"
+        android:pathData="M24,49 L31,49 L31,61 L24,61 Z M35,39 L42,39 L42,71 L35,71 Z M46,29 L53,29 L53,81 L46,81 Z M57,37 L64,37 L64,73 L57,73 Z M68,45 L75,45 L75,65 L68,65 Z M79,51 L86,51 L86,59 L79,59 Z" />
+    <!-- Silver musical note -->
+    <path android:fillColor="#E8EEF7"
+        android:pathData="M72,18 L72,35 C69,33 65,34 63,37 C60,41 63,46 68,45 C72,44 75,41 75,37 L75,26 L84,24 L84,16 Z" />
+</vector>
