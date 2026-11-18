@@ -20,9 +20,9 @@ android {
         applicationId 'com.jackgray.winamp'
         minSdk 23
         targetSdk 35
-        versionCode 19
-        versionName '1.4.1'
+        versionCode 20
+        versionName '1.4.2'
     }
 }
 
-// DJ Tune Jack 1.4.1 launcher identity and controller icon.
+// DJ Tune Jack 1.4.2 JACK TUNERS stage 1 improvements.
