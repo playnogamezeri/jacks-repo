@@ -231,7 +231,7 @@ private fun JackTunesApp() {
         AlertDialog(
             onDismissRequest = { deleteTarget = null },
             title = { Text("Delete this recording?") },
-            text = { Text("This permanently deletes ${deleteTarget?.nameWithoutExtension ?: "this take"} from Jack Tunes on this phone. This cannot be undone.") },
+            text = { Text("This permanently deletes ${deleteTarget?.nameWithoutExtension ?: "this take"} from Jack Tone on this phone. This cannot be undone.") },
             confirmButton = {
                 Button(
                     onClick = {
@@ -265,7 +265,7 @@ private fun JackTunesApp() {
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("JACK TUNES  /  PRIVATE STUDIO", color = Teal, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                        Text("JACK TONE  /  PRIVATE STUDIO", color = Teal, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                         Text("Make something real.", color = Ink, fontSize = 27.sp, fontWeight = FontWeight.Bold)
                         Text("Your voice. Your songs. Your space.", color = Muted, fontSize = 12.sp)
                     }
@@ -451,7 +451,7 @@ private fun JackTunesApp() {
                                             onClick = {
                                                 if (renderingFileName == null && autoTuneEnabled) {
                                                     renderingFileName = file.name
-                                                    message = "Tuning vocal… keep Jack Tunes open."
+                                                    message = "Tuning vocal… keep Jack Tone open."
                                                     val selectedRoot = autoTuneRoot
                                                     val selectedStrength = autoTuneStrength
                                                     val selectedScale = if (autoTuneMajor)
@@ -980,7 +980,7 @@ private fun LyricsScreen(onBack: () -> Unit, onRecordingSaved: (File) -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             OutlinedButton(onClick = onBack) { Text("← Studio") }
             Spacer(Modifier.weight(1f))
-            Text("JACK TUNES  /  LYRIC BOOK", color = Teal, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.3.sp)
+            Text("JACK TONE  /  LYRIC BOOK", color = Teal, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.3.sp)
         }
         Text("Write your song.", color = Ink, fontSize = 28.sp, fontWeight = FontWeight.Bold)
         Text("A private space for hooks, verses, bridges, and unfinished ideas.", color = Muted, fontSize = 12.sp)
@@ -1043,7 +1043,7 @@ private fun LyricsScreen(onBack: () -> Unit, onRecordingSaved: (File) -> Unit) {
                 }
             }
         }
-        Text("Lyric drafts are stored privately inside Jack Tunes on this device.", color = Muted, fontSize = 10.sp)
+        Text("Lyric drafts are stored privately inside Jack Tone on this device.", color = Muted, fontSize = 10.sp)
     }
 }
 
@@ -1108,7 +1108,7 @@ private fun KaraokeRecordingScreen(title: String, lyrics: String, onBack: () -> 
         try {
             recorder?.stop()
             recordingFile?.let { if (it.exists() && it.length() > 0) onSaved(it) }
-            status = "Take saved in your Jack Tunes recordings."
+            status = "Take saved in your Jack Tone recordings."
         } catch (_: Exception) {
             recordingFile?.delete()
             status = "Recording was too short. Try again."
