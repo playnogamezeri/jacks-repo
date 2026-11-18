@@ -15,6 +15,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.SeekBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -243,7 +244,7 @@ public class StudioActivity extends Activity {
         LinearLayout box=section("03 // LOW-FREQUENCY CONTROL");
         bassStatus=label("BASS EFFECT: "+(bass!=null?(bassEnabled?"ACTIVE":"BYPASSED"):"UNAVAILABLE"),10,cyan,true);box.addView(bassStatus);
         if(bass==null){box.addView(label("BASS BOOST NOT SUPPORTED BY THIS DEVICE.",11,muted,false));return;}
-        box.addView(button(bassEnabled?"BASS BOOST: ON / TAP TO BYPASS":"BASS BOOST: OFF / TAP TO ENABLE",()->{try{bassEnabled=!bassEnabled;bass.setEnabled(bassEnabled);bassStatus.setText("BASS EFFECT: "+(bassEnabled?"ACTIVE":"BYPASSED"));toast(bassEnabled?"Bass boost enabled":"Bass boost bypassed");}catch(Exception e){bassStatus.setText("BASS EFFECT: CONTROL ERROR");toast("Bass boost unavailable");}}));
+        box.addView(button("TOGGLE BASS BOOST",()->{try{bassEnabled=!bassEnabled;bass.setEnabled(bassEnabled);bassStatus.setText("BASS EFFECT: "+(bassEnabled?"ACTIVE":"BYPASSED"));toast(bassEnabled?"Bass boost enabled":"Bass boost bypassed");}catch(Exception e){bassStatus.setText("BASS EFFECT: CONTROL ERROR");toast("Bass boost unavailable");}}));
         addStrengthSlider(box,"BASS INTENSITY",bass);
     }
 
@@ -251,7 +252,7 @@ public class StudioActivity extends Activity {
         LinearLayout box=section("04 // STEREO & AMBIENCE");
         virtualizerStatus=label("VIRTUALIZER: "+(virtualizer!=null?(virtualizerEnabled?"ACTIVE":"BYPASSED"):"UNAVAILABLE"),10,cyan,true);box.addView(virtualizerStatus);
         if(virtualizer!=null){
-            box.addView(button(virtualizerEnabled?"VIRTUALIZER: ON / TAP TO BYPASS":"VIRTUALIZER: OFF / TAP TO ENABLE",()->{try{virtualizerEnabled=!virtualizerEnabled;virtualizer.setEnabled(virtualizerEnabled);virtualizerStatus.setText("VIRTUALIZER: "+(virtualizerEnabled?"ACTIVE":"BYPASSED"));toast(virtualizerEnabled?"Stereo processing enabled":"Stereo processing bypassed");}catch(Exception e){virtualizerStatus.setText("VIRTUALIZER: CONTROL ERROR");toast("Virtualizer unavailable");}}));
+            box.addView(button("TOGGLE VIRTUALIZER",()->{try{virtualizerEnabled=!virtualizerEnabled;virtualizer.setEnabled(virtualizerEnabled);virtualizerStatus.setText("VIRTUALIZER: "+(virtualizerEnabled?"ACTIVE":"BYPASSED"));toast(virtualizerEnabled?"Stereo processing enabled":"Stereo processing bypassed");}catch(Exception e){virtualizerStatus.setText("VIRTUALIZER: CONTROL ERROR");toast("Virtualizer unavailable");}}));
             addStrengthSlider(box,"STEREO WIDTH",virtualizer);
         } else box.addView(label("VIRTUALIZER NOT SUPPORTED BY THIS DEVICE.",10,muted,false));
         LinearLayout row=new LinearLayout(this); row.setGravity(Gravity.CENTER_VERTICAL);
@@ -265,7 +266,7 @@ public class StudioActivity extends Activity {
             catch(Exception e){toast("Reverb preset unavailable");}
         }));
         box.addView(row);
-        if(reverb!=null)box.addView(button("REVERB ON / OFF",()->{
+        if(reverb!=null)box.addView(button("TOGGLE REVERB",()->{
             try{
                 if(!reverbEnabled){
                     if(!PlaybackService.attachAuxEffect(reverb.getId())){toast("Start playback to attach reverb");return;}
