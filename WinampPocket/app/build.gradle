@@ -20,9 +20,9 @@ android {
         applicationId 'com.jackgray.winamp'
         minSdk 23
         targetSdk 35
-        versionCode 25
-        versionName '2.0.1'
+        versionCode 26
+        versionName '2.1.0'
     }
 }
 
-// DJ Tune Jack 2.0.1 Stereo Metering and FFT Peak Hold.
+// DJ Tune Jack 2.1.0 Dynamics Processing Upgrade.
