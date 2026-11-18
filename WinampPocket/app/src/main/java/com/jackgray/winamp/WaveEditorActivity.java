@@ -7,6 +7,9 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.net.Uri;
+import android.media.AudioFormat;
+import android.media.AudioManager;
+import android.media.AudioTrack;
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
@@ -41,6 +44,9 @@ public class WaveEditorActivity extends Activity {
     private int sampleRate=44100,channels=2;
     private long totalFrames=0;
     private boolean busy=false;
+    private volatile boolean previewStop=true;
+    private AudioTrack previewTrack;
+    private Thread previewThread;
     private static final int PICK_AUDIO=301, SAVE_WAV=302;
 
     @Override protected void onCreate(Bundle state){
@@ -58,6 +64,9 @@ public class WaveEditorActivity extends Activity {
         root.addView(button("IMPORT AUDIO FILE",()->pickAudio()));
         root.addView(sectionLabel("WAVEFORM OVERVIEW"));
         wave=new WaveView();LinearLayout.LayoutParams wp=new LinearLayout.LayoutParams(-1,dp(150));wp.topMargin=dp(8);root.addView(wave,wp);
+        root.addView(sectionLabel("PLAYBACK PREVIEW"));
+        root.addView(button("PLAY SELECTED REGION",()->playSelection()));
+        root.addView(button("STOP PREVIEW",()->stopPreview()));
         root.addView(sectionLabel("EDIT REGION"));
         startSeek=slider(root,"START POINT",0);
         endSeek=slider(root,"END POINT",100);
@@ -77,6 +86,7 @@ public class WaveEditorActivity extends Activity {
     }
 
     @Override protected void onActivityResult(int request,int result,Intent data){
+        stopPreview();
         super.onActivityResult(request,result,data);
         if(result!=RESULT_OK||data==null||data.getData()==null)return;
         Uri uri=data.getData();
@@ -87,6 +97,7 @@ public class WaveEditorActivity extends Activity {
     }
 
     private void decode(Uri uri){
+        stopPreview();
         busy=true;status.setText("DECODING AUDIO // PLEASE WAIT");
         fileLabel.setText(displayName(uri));
         new Thread(()->{
@@ -179,6 +190,56 @@ public class WaveEditorActivity extends Activity {
         wave.setSelection(startSeek.getProgress(),endSeek.getProgress());
     }
 
+    private void playSelection(){
+        if(busy||pcmFile==null||totalFrames<=0){toast("Import an audio file first");return;}
+        stopPreview();
+        final long first=totalFrames*startSeek.getProgress()/100;
+        final long last=totalFrames*endSeek.getProgress()/100;
+        if(last<=first){toast("Select a valid audio region");return;}
+        previewStop=false;
+        status.setText("PREVIEW PLAYING // SELECTED REGION");
+        previewThread=new Thread(()->{
+            AudioTrack track=null;
+            try(java.io.RandomAccessFile input=new java.io.RandomAccessFile(pcmFile,"r")){
+                int channelConfig=channels==1?AudioFormat.CHANNEL_OUT_MONO:AudioFormat.CHANNEL_OUT_STEREO;
+                int min=AudioTrack.getMinBufferSize(sampleRate,channelConfig,AudioFormat.ENCODING_PCM_16BIT);
+                if(min<=0)throw new Exception("Audio output format unavailable");
+                int bufferSize=Math.max(min,32768);
+                track=new AudioTrack(AudioManager.STREAM_MUSIC,sampleRate,channelConfig,
+                        AudioFormat.ENCODING_PCM_16BIT,bufferSize,AudioTrack.MODE_STREAM);
+                previewTrack=track;
+                track.play();
+                long remaining=(last-first)*channels*2L;
+                input.seek(first*channels*2L);
+                byte[] buffer=new byte[bufferSize];
+                while(remaining>0&&!previewStop){
+                    int count=input.read(buffer,0,(int)Math.min(buffer.length,remaining));
+                    if(count<0)break;
+                    int written=0;
+                    while(written<count&&!previewStop){
+                        int n=track.write(buffer,written,count-written);
+                        if(n<0)throw new Exception("Audio preview output failed");
+                        written+=n;
+                    }
+                    remaining-=count;
+                }
+            }catch(Exception e){
+                runOnUiThread(()->{status.setText("PREVIEW STOPPED // "+e.getMessage());});
+            }finally{
+                if(track!=null){try{track.pause();track.flush();track.stop();}catch(Exception ignored){}track.release();}
+                if(previewTrack==track)previewTrack=null;
+                runOnUiThread(()->{if(!busy)status.setText("PREVIEW COMPLETE // SOURCE AUDIO UNCHANGED");});
+            }
+        },"JackTunes-WavePreview");
+        previewThread.start();
+    }
+
+    private void stopPreview(){
+        previewStop=true;
+        AudioTrack track=previewTrack;
+        if(track!=null){try{track.pause();track.flush();}catch(Exception ignored){}}
+    }
+
     private void saveWav(){
         if(busy||pcmFile==null||totalFrames<=0){toast("Import an audio file first");return;}
         Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.setType("audio/wav");i.addCategory(Intent.CATEGORY_OPENABLE);
@@ -188,6 +249,7 @@ public class WaveEditorActivity extends Activity {
     }
 
     private void renderWav(Uri destination){
+        stopPreview();
         busy=true;status.setText("RENDERING WAV // DO NOT CLOSE");
         long first=totalFrames*startSeek.getProgress()/100;
         long last=totalFrames*endSeek.getProgress()/100;
@@ -246,6 +308,8 @@ public class WaveEditorActivity extends Activity {
     private LinearLayout section(String s){LinearLayout b=new LinearLayout(this);b.setOrientation(LinearLayout.VERTICAL);b.setPadding(dp(9),dp(8),dp(9),dp(8));android.graphics.drawable.GradientDrawable d=new android.graphics.drawable.GradientDrawable();d.setColor(panel);d.setStroke(dp(1),edge);d.setCornerRadius(dp(5));b.setBackground(d);return b;}
     private int dp(float n){return (int)(n*getResources().getDisplayMetrics().density+0.5f);}
     private void toast(String s){Toast.makeText(this,s,Toast.LENGTH_SHORT).show();}
+    @Override protected void onPause(){stopPreview();super.onPause();}
+    @Override protected void onDestroy(){stopPreview();if(pcmFile!=null&&pcmFile.exists())pcmFile.delete();super.onDestroy();}
 
     private class WaveView extends View{
         private final Paint p=new Paint(3);private float[] peaks=new float[0];private int from=0,to=100;
