@@ -121,7 +121,8 @@ public class StudioActivity extends Activity {
                 public void onFftDataCapture(Visualizer v,byte[] data,int rate){if(analyzer!=null)analyzer.setFft(data);}
             },Math.max(Visualizer.getMaxCaptureRate()/2,1),false,true);
             visualizer.setEnabled(true);
-            box.addView(button("ANALYZER ON / OFF",()->{try{boolean next=!visualizer.getEnabled();visualizer.setEnabled(next);toast(next?"Analyzer running":"Analyzer paused");}catch(Exception e){toast("Analyzer unavailable");}}));
+            analyzerStatus.setText("ANALYZER: LIVE • SESSION "+session);
+            box.addView(button("ANALYZER ON / OFF",()->{try{boolean next=!visualizer.getEnabled();visualizer.setEnabled(next);analyzerStatus.setText(next?"ANALYZER: LIVE • FFT CAPTURE":"ANALYZER: PAUSED");toast(next?"Analyzer running":"Analyzer paused");}catch(Exception e){analyzerStatus.setText("ANALYZER: UNAVAILABLE");toast("Analyzer unavailable");}}));
         } catch(Exception e) {
             if(visualizer!=null){try{visualizer.release();}catch(Exception ignored){}visualizer=null;}
             if(analyzerStatus!=null)analyzerStatus.setText("ANALYZER: NOT SUPPORTED");
@@ -161,9 +162,14 @@ public class StudioActivity extends Activity {
         LinearLayout box=section("02 // GRAPHIC EQUALIZER");
         if(eq==null){box.addView(label("EQUALIZER NOT AVAILABLE ON THIS DEVICE / SESSION.",11,muted,false));return;}
         LinearLayout actions=new LinearLayout(this); actions.setGravity(Gravity.CENTER);
-        actions.addView(button("FLAT / RESET",()->{try{boolean found=false;for(short i=0;i<eq.getNumberOfPresets();i++){String n=eq.getPresetName(i);if(n!=null&&(n.equalsIgnoreCase("normal")||n.equalsIgnoreCase("flat"))){eq.usePreset(i);found=true;break;}}if(!found){short[] r=eq.getBandLevelRange();for(short i=0;i<eq.getNumberOfBands();i++)eq.setBandLevel(i,(short)Math.max(r[0],Math.min(r[1],0)));}renderBands();}catch(Exception e){toast("Flat reset unavailable");}}));
+        actions.addView(button("FLAT / RESET",()->applyEqPreset("FLAT")));
         actions.addView(button(eqEnabled?"EQ: ON / TAP TO BYPASS":"EQ: BYPASSED / TAP TO ENABLE",()->{try{eqEnabled=!eqEnabled;eq.setEnabled(eqEnabled);renderBands();}catch(Exception e){toast("Equalizer control unavailable");}}));
         box.addView(actions);
+        LinearLayout presetRow=new LinearLayout(this); presetRow.setOrientation(LinearLayout.HORIZONTAL);
+        String[] presets={"FLAT","BASS","BASS+","TREBLE","VOCAL","ROCK","POP","JAZZ","CLASSICAL","DANCE","HIP-HOP","ACOUSTIC","PODCAST"};
+        for(String preset:presets) presetRow.addView(button(preset,()->applyEqPreset(preset)));
+        HorizontalScrollView presetScroll=new HorizontalScrollView(this); presetScroll.setHorizontalScrollBarEnabled(false); presetScroll.addView(presetRow); box.addView(presetScroll);
+        eqPresetStatus=label("EQ PROFILE: "+eqPresetName,10,cyan,true); box.addView(eqPresetStatus);
         renderBandsInto(box);
     }
 
@@ -255,7 +261,7 @@ public class StudioActivity extends Activity {
         row.addView(button("NEXT SPACE",()->{
             if(reverb==null){toast("Reverb unavailable");return;}
             reverbIndex=(reverbIndex+1)%reverbPresets.length;
-            try{reverb.setPreset(reverbPresets[reverbIndex]);preset.setText("REVERB: "+reverbNames[reverbIndex]);}
+            try{reverb.setPreset(reverbPresets[reverbIndex]);preset.setText("REVERB: "+reverbNames[reverbIndex]+" • "+(reverbEnabled?"ACTIVE":"OFF"));}
             catch(Exception e){toast("Reverb preset unavailable");}
         }));
         box.addView(row);
@@ -267,6 +273,7 @@ public class StudioActivity extends Activity {
                 }else{
                     PlaybackService.detachAuxEffect();reverb.setEnabled(false);reverbEnabled=false;
                 }
+                reverbStatus.setText("REVERB: "+reverbNames[reverbIndex]+" • "+(reverbEnabled?"ACTIVE":"OFF"));
                 reverbStatus.setText("REVERB: "+reverbNames[reverbIndex]+" • "+(reverbEnabled?"ACTIVE":"OFF"));
                 toast(reverbEnabled?"Reverb enabled":"Reverb bypassed");
             }catch(Exception e){toast("Reverb routing unavailable");}
@@ -286,6 +293,9 @@ public class StudioActivity extends Activity {
 
     private void addStrengthSlider(LinearLayout box,String name,Object effect){
         SeekBar seek=new SeekBar(this); seek.setMax(1000); tint(seek);
+        boolean supported=true;
+        try{supported=effect instanceof BassBoost?((BassBoost)effect).getStrengthSupported():((Virtualizer)effect).getStrengthSupported();}catch(Exception ignored){}
+        if(!supported){box.addView(label(name+": STRENGTH CONTROL NOT SUPPORTED BY DEVICE",9,muted,false));return;}
         try{
             short initial=effect instanceof BassBoost?((BassBoost)effect).getRoundedStrength():((Virtualizer)effect).getRoundedStrength();
             seek.setProgress(initial);
