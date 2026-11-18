@@ -4,7 +4,7 @@
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
     <application
         android:allowBackup="true"
-        android:label="Jack Tunes"
+        android:label="Jack Tone"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity
