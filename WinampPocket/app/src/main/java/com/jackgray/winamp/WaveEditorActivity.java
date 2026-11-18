@@ -44,6 +44,7 @@ public class WaveEditorActivity extends Activity {
     private boolean hpfEnabled=false,lpfEnabled=false;
     private double hpfHz=40, lpfHz=18000;
     private TextView eqStatus;
+    private EqCurveView eqCurve;
     private final java.util.ArrayList<SeekBar> advancedEqBars=new java.util.ArrayList<>();
     private File pcmFile;
     private int sampleRate=44100,channels=2;
@@ -82,6 +83,8 @@ public class WaveEditorActivity extends Activity {
         root.addView(sectionLabel("STAGE 2 // ADVANCED PARAMETRIC EQ"));
         root.addView(label("5-BAND BIQUAD IIR • PROCESSING IS APPLIED TO PREVIEW AND EXPORTED WAV",9,muted,true));
         eqStatus=label("EQ: FLAT • HPF OFF • LPF OFF",10,cyan,true);root.addView(eqStatus);
+        root.addView(label("FREQUENCY RESPONSE PREVIEW",9,muted,true));
+        eqCurve=new EqCurveView();root.addView(eqCurve,new LinearLayout.LayoutParams(-1,dp(130)));
         String[] eqNames={"SUB / BASS 80 Hz","LOW 250 Hz","MID 1 kHz","PRESENCE 4 kHz","AIR 12 kHz"};
         for(int i=0;i<eqNames.length;i++)addEqBand(root,i,eqNames[i]);
         root.addView(button("TOGGLE HIGH-PASS FILTER",()->{hpfEnabled=!hpfEnabled;updateEqStatus();}));
@@ -202,6 +205,7 @@ public class WaveEditorActivity extends Activity {
     private void updateEqStatus(){
         if(eqStatus==null)return;double sum=0;for(double g:eqGains)sum+=Math.abs(g);
         eqStatus.setText("EQ: "+(sum<0.01?"FLAT":"CUSTOM")+" • HPF "+(hpfEnabled?"ON "+(int)hpfHz+"Hz":"OFF")+" • LPF "+(lpfEnabled?"ON "+(int)lpfHz+"Hz":"OFF"));
+        if(eqCurve!=null)eqCurve.invalidate();
     }
     private void resetAdvancedEq(){
         for(int i=0;i<eqGains.length;i++)eqGains[i]=0;
@@ -358,6 +362,34 @@ public class WaveEditorActivity extends Activity {
     private void toast(String s){Toast.makeText(this,s,Toast.LENGTH_SHORT).show();}
     @Override protected void onPause(){stopPreview();super.onPause();}
     @Override protected void onDestroy(){stopPreview();if(pcmFile!=null&&pcmFile.exists())pcmFile.delete();super.onDestroy();}
+
+    private class EqCurveView extends View{
+        private final Paint p=new Paint(3);
+        EqCurveView(){super(WaveEditorActivity.this);setBackgroundColor(Color.rgb(1,5,10));}
+        @Override protected void onDraw(Canvas c){
+            super.onDraw(c);float w=getWidth(),h=getHeight(),left=dp(30),right=w-dp(8),top=dp(8),bottom=h-dp(22);
+            p.setStrokeWidth(1);p.setColor(Color.rgb(30,65,78));
+            for(int i=0;i<=4;i++){float y=top+(bottom-top)*i/4f;c.drawLine(left,y,right,y,p);}
+            for(int i=0;i<=5;i++){float x=left+(right-left)*i/5f;c.drawLine(x,top,x,bottom,p);}
+            p.setColor(muted);p.setTextSize(dp(8));c.drawText("+12",dp(2),top+dp(4),p);c.drawText("0",dp(12),(top+bottom)/2,p);c.drawText("-12",dp(2),bottom,p);
+            p.setColor(cyan);p.setStrokeWidth(dp(2));
+            float prevX=left,prevY=(top+bottom)/2;
+            for(int i=0;i<=160;i++){
+                double hz=20*Math.pow(1000.0,i/160.0);
+                double db=0;
+                double[] centers={80,250,1000,4000,12000};
+                for(int b=0;b<5;b++){double z=Math.log(hz/centers[b])/0.42;db+=eqGains[b]*Math.exp(-0.5*z*z);}
+                if(hpfEnabled)db-=Math.max(0,Math.log10(hpfHz/hz)*24);
+                if(lpfEnabled)db-=Math.max(0,Math.log10(hz/lpfHz)*24);
+                db=Math.max(-12,Math.min(12,db));
+                float x=left+(right-left)*i/160f;
+                float y=bottom-(float)((db+12)/24.0)*(bottom-top);
+                if(i>0)c.drawLine(prevX,prevY,x,y,p);prevX=x;prevY=y;
+            }
+            p.setColor(muted);p.setStrokeWidth(1);p.setTextSize(dp(8));
+            c.drawText("20 Hz",left,bottom+dp(15),p);c.drawText("1 kHz",(left+right)/2-dp(10),bottom+dp(15),p);c.drawText("20 kHz",right-dp(35),bottom+dp(15),p);
+        }
+    }
 
     private class WaveView extends View{
         private final Paint p=new Paint(3);private float[] peaks=new float[0];private int from=0,to=100;
