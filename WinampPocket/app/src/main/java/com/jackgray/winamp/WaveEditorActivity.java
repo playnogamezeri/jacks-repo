@@ -49,6 +49,9 @@ public class WaveEditorActivity extends Activity {
     private boolean hpfEnabled=false,lpfEnabled=false;
     private double hpfHz=40, lpfHz=18000;
     private TextView eqStatus,presetStatus;
+    private SeekBar thresholdBar,ratioBar,attackBar,releaseBar,makeupBar,gateBar;
+    private TextView dynamicsStatus,meterStatus;
+    private double compressorThreshold=-18.0, compressorRatio=3.0, attackMs=10.0, releaseMs=120.0, makeupDb=0.0, gateThresholdDb=-60.0;
     private final String[] presetNames={"FLAT","WARM VOCALS","PRESENCE BOOST","PODCAST VOICE","DEEP BASS","CLUB / EDM","HIP-HOP","ROCK GUITARS","ACOUSTIC","JAZZ","CLASSICAL","BRIGHT POP","LO-FI","AIR & DETAIL"};
     private EqCurveView eqCurve;
     private final java.util.ArrayList<SeekBar> advancedEqBars=new java.util.ArrayList<>();
@@ -103,7 +106,18 @@ public class WaveEditorActivity extends Activity {
         root.addView(button("TOGGLE LOW-PASS FILTER",()->{lpfEnabled=!lpfEnabled;updateEqStatus();}));
         addCutoffSlider(root,"LPF CUTOFF 2–20 kHz",2000,20000,18000,false);
         root.addView(button("RESET ADVANCED EQ",()->resetAdvancedEq()));
-        root.addView(button("RENDER SELECTION AS EQ-PROCESSED WAV",()->saveWav()));
+        root.addView(button("RENDER SELECTION AS PROCESSED WAV",()->saveWav()));
+        root.addView(sectionLabel("STAGE 3 // DYNAMICS & METERING"));
+        root.addView(label("COMPRESSOR • NOISE GATE • PEAK LIMITER • MAKEUP GAIN",9,muted,true));
+        meterStatus=label("OUTPUT METER: -- dBFS PEAK  |  -- dBFS RMS",10,cyan,true);root.addView(meterStatus);
+        dynamicsStatus=label("DYNAMICS: COMPRESSOR -18 dB / 3:1 • GATE OFF",10,white,true);root.addView(dynamicsStatus);
+        thresholdBar=dynamicsSlider(root,"COMPRESSOR THRESHOLD",-36,0,-18," dB",0);
+        ratioBar=dynamicsSlider(root,"COMPRESSOR RATIO",1,10,3," : 1",1);
+        attackBar=dynamicsSlider(root,"ATTACK",1,100,10," ms",2);
+        releaseBar=dynamicsSlider(root,"RELEASE",20,500,120," ms",3);
+        makeupBar=dynamicsSlider(root,"MAKEUP GAIN",0,12,0," dB",4);
+        gateBar=dynamicsSlider(root,"NOISE GATE THRESHOLD (OFF AT -60)",-60,-20,-60," dB",5);
+        root.addView(button("RESET DYNAMICS",()->resetDynamics()));
         status=label("READY // ORIGINAL FILES ARE NEVER OVERWRITTEN",10,muted,true);
         status.setPadding(0,dp(12),0,0);root.addView(status);
     }
@@ -243,6 +257,42 @@ public class WaveEditorActivity extends Activity {
         presetStatus.setText("PRESET: "+name);updateEqStatus();
     }
 
+    private SeekBar dynamicsSlider(LinearLayout root,String title,int min,int max,int initial,String unit,int kind){
+        TextView value=label(title+"  "+initial+unit,9,muted,true);root.addView(value);
+        SeekBar seek=new SeekBar(this);seek.setMax(max-min);seek.setProgress(initial-min);tint(seek);root.addView(seek);
+        seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
+            public void onProgressChanged(SeekBar b,int p,boolean user){
+                int v=min+p; value.setText(title+"  "+v+unit);
+                if(kind==0)compressorThreshold=v;
+                else if(kind==1)compressorRatio=v;
+                else if(kind==2)attackMs=v;
+                else if(kind==3)releaseMs=v;
+                else if(kind==4)makeupDb=v;
+                else gateThresholdDb=v;
+                updateDynamicsStatus();
+            }
+            public void onStartTrackingTouch(SeekBar b){}
+            public void onStopTrackingTouch(SeekBar b){}
+        });
+        return seek;
+    }
+
+    private DynamicsProcessor createDynamicsProcessor(){
+        return new DynamicsProcessor(sampleRate,channels,compressorThreshold,compressorRatio,attackMs,releaseMs,makeupDb,gateThresholdDb);
+    }
+
+    private void updateDynamicsStatus(){
+        if(dynamicsStatus!=null)dynamicsStatus.setText(String.format(Locale.US,
+            "DYNAMICS: COMP %.0f dB / %.1f:1 • GATE %s • MAKEUP +%.1f dB",
+            compressorThreshold,compressorRatio,gateThresholdDb<=-60?"OFF":String.format(Locale.US,"%.0f dB",gateThresholdDb),makeupDb));
+    }
+
+    private void resetDynamics(){
+        compressorThreshold=-18;compressorRatio=3;attackMs=10;releaseMs=120;makeupDb=0;gateThresholdDb=-60;
+        thresholdBar.setProgress(18);ratioBar.setProgress(2);attackBar.setProgress(9);releaseBar.setProgress(100);makeupBar.setProgress(0);gateBar.setProgress(0);
+        updateDynamicsStatus();if(meterStatus!=null)meterStatus.setText("OUTPUT METER: -- dBFS PEAK  |  -- dBFS RMS");
+    }
+
     private int freqProgress(double hz){return (int)Math.max(0,Math.min(1000,Math.log(hz/20.0)/Math.log(1000.0)*1000));}
     private void addCutoffSlider(LinearLayout root,String title,int min,int max,int initial,boolean highPass){
         TextView value=label(title+"  "+initial+" Hz",9,muted,true);root.addView(value);
@@ -298,7 +348,8 @@ public class WaveEditorActivity extends Activity {
         if(last<=first){toast("Select a valid audio region");return;}
         previewStop=false;
         final BiquadEqProcessor previewEq=createEqProcessor();
-        status.setText("PREVIEW PLAYING // SELECTED REGION • EQ DSP");
+        final DynamicsProcessor previewDynamics=createDynamicsProcessor();
+        status.setText("PREVIEW PLAYING // EQ + DYNAMICS DSP");
         previewThread=new Thread(()->{
             AudioTrack track=null;
             try(java.io.RandomAccessFile input=new java.io.RandomAccessFile(pcmFile,"r")){
@@ -317,6 +368,8 @@ public class WaveEditorActivity extends Activity {
                     int count=input.read(buffer,0,(int)Math.min(buffer.length,remaining));
                     if(count<0)break;
                     previewEq.process(buffer,count);
+                    previewDynamics.process(buffer,count);
+                    if(meterStatus!=null){String meter=previewDynamics.getMeterText();runOnUiThread(()->meterStatus.setText(meter));}
                     int written=0;
                     while(written<count&&!previewStop){
                         int n=track.write(buffer,written,count-written);
@@ -359,6 +412,7 @@ public class WaveEditorActivity extends Activity {
         long fadeOutFrames=(long)fadeOutSeek.getProgress()*sampleRate/10;
         long frameBytes=channels*2L;
         final BiquadEqProcessor renderEq=createEqProcessor();
+        final DynamicsProcessor renderDynamics=createDynamicsProcessor();
         new Thread(()->{
             try(InputStream in=new BufferedInputStream(new FileInputStream(pcmFile));
                 OutputStream out=new BufferedOutputStream(getContentResolver().openOutputStream(destination))){
@@ -370,6 +424,8 @@ public class WaveEditorActivity extends Activity {
                 while(remaining>0){
                     int count=in.read(block,0,(int)Math.min(block.length,remaining));if(count<0)break;
                     renderEq.process(block,count);
+                    renderDynamics.process(block,count);
+                    if(meterStatus!=null){String meter=renderDynamics.getMeterText();runOnUiThread(()->meterStatus.setText(meter));}
                     for(int pos=0;pos+1<count;pos+=2){
                         long f=frame;
                         double gain=1.0;
