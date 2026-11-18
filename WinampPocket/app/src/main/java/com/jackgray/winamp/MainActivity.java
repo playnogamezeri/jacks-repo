@@ -271,7 +271,11 @@ public class MainActivity extends Activity {
     private void stop(){if(player!=null&&prepared){player.pause();player.seekTo(0);status.setText("STOPPED");elapsed.setText("0:00");progress.setProgress(0);}}
     private void next(){if(tracks.isEmpty())return;int n=shuffle?(int)(Math.random()*tracks.size()):(current+1)%tracks.size();playIndex(n);}
     private void removeCurrent(){if(current<0||current>=tracks.size())return;releasePlayer();tracks.remove(current);names.remove(current);current=-1;renumberPlaylist();savePlaylist();adapter.notifyDataSetChanged();trackTitle.setText("NO TRACK LOADED");status.setText("READY");elapsed.setText("0:00");duration.setText("0:00");progress.setProgress(0);}
-    private void exitApp(){\n        releasePlayer();\n        finishAndRemoveTask();\n    }\n    private void clearPlaylist(){releasePlayer();tracks.clear();names.clear();current=-1;savePlaylist();adapter.notifyDataSetChanged();trackTitle.setText("NO TRACK LOADED");status.setText("READY");elapsed.setText("0:00");duration.setText("0:00");progress.setProgress(0);}
+    private void exitApp(){
+        releasePlayer();
+        finishAndRemoveTask();
+    }
+    private void clearPlaylist(){releasePlayer();tracks.clear();names.clear();current=-1;savePlaylist();adapter.notifyDataSetChanged();trackTitle.setText("NO TRACK LOADED");status.setText("READY");elapsed.setText("0:00");duration.setText("0:00");progress.setProgress(0);}
     private String cleanTrackName(String value){
         int marker=value.indexOf(".  ");
         return marker>=0?value.substring(marker+3):value;
