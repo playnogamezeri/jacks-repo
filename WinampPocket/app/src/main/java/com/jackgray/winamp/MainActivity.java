@@ -288,7 +288,9 @@ public class MainActivity extends Activity {
         try{
             SharedPreferences prefs=getSharedPreferences("winamp_playlist",MODE_PRIVATE);
             JSONArray items=new JSONArray(prefs.getString("tracks","[]"));
-            sortMode=prefs.getInt("sortMode",0);\n            playlistName=prefs.getString("playlistName","MY MUSIC LIST");\n            if(playlistHeading!=null) playlistHeading.setText(playlistName);
+            sortMode=prefs.getInt("sortMode",0);
+            playlistName=prefs.getString("playlistName","MY MUSIC LIST");
+            if(playlistHeading!=null) playlistHeading.setText(playlistName);
             for(int i=0;i<items.length();i++){
                 org.json.JSONObject item=items.getJSONObject(i);
                 Uri uri=Uri.parse(item.getString("uri"));
