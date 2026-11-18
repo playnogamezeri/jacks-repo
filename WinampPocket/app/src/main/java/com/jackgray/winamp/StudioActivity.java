@@ -74,6 +74,14 @@ public class StudioActivity extends Activity {
         sectionNote("◈ SIGNAL CHAIN     ◈ LIVE DSP     ◈ SESSION LINKED");
     }
 
+    @Override public void onRequestPermissionsResult(int requestCode,String[] permissions,int[] grantResults){
+        super.onRequestPermissionsResult(requestCode,permissions,grantResults);
+        if(requestCode==404){
+            if(grantResults.length>0&&grantResults[0]==android.content.pm.PackageManager.PERMISSION_GRANTED)recreate();
+            else toast("Live analyzer requires microphone permission");
+        }
+    }
+
     private void initializeEffects(int session){
         try{
             try { eq=new Equalizer(0,session); eq.setEnabled(true); } catch(Exception ignored) { eq=null; }
@@ -95,6 +103,11 @@ public class StudioActivity extends Activity {
         box.addView(analyzer,new LinearLayout.LayoutParams(-1,dp(105)));
         box.addView(label("LIVE FFT OUTPUT  •  PLAYBACK SPECTRUM",9,muted,true));
         if(session<=0){box.addView(label("PLAY A TRACK TO CONNECT THE ANALYZER.",10,muted,false));return;}
+        if(android.os.Build.VERSION.SDK_INT>=23 && checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)!=android.content.pm.PackageManager.PERMISSION_GRANTED){
+            box.addView(label("MICROPHONE PERMISSION IS REQUIRED FOR LIVE SPECTRUM CAPTURE.",10,muted,false));
+            requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO},404);
+            return;
+        }
         try {
             visualizer=new Visualizer(session);
             int[] range=Visualizer.getCaptureSizeRange();
