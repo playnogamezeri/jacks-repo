@@ -20,9 +20,9 @@ android {
         applicationId 'com.jackgray.winamp'
         minSdk 23
         targetSdk 35
-        versionCode 21
-        versionName '1.5.0'
+        versionCode 22
+        versionName '1.5.1'
     }
 }
 
-// DJ Tune Jack 1.5.0 Advanced Parametric EQ and biquad DSP.
+// DJ Tune Jack 1.5.1 Advanced EQ preset library.
