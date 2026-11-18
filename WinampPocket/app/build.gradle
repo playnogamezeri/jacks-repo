@@ -20,9 +20,9 @@ android {
         applicationId 'com.jackgray.winamp'
         minSdk 23
         targetSdk 35
-        versionCode 22
-        versionName '1.5.1'
+        versionCode 23
+        versionName '1.5.2'
     }
 }
 
-// DJ Tune Jack 1.5.1 Advanced EQ preset library.
+// DJ Tune Jack 1.5.2 duplicate playlist prevention.
