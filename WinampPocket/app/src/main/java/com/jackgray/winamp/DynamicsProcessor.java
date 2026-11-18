@@ -75,7 +75,7 @@ public final class DynamicsProcessor {
             return String.format(Locale.US,
                 "STEREO PEAK  L %5.1f  R %5.1f dBFS\nSTEREO RMS   L %5.1f  R %5.1f dBFS\n%s  •  LIMITER: %d",
                 db(peak[0]),db(peak[1]),db(leftRms),db(rightRms),
-                inputPeak>=1.0?"INPUT CLIP DETECTED":"NO INPUT CLIP",limiterHits);
+                inputPeak>=0.999?"INPUT CLIP DETECTED":"NO INPUT CLIP",limiterHits);
         }
         double monoRms=sampleCounts[0]>0?Math.sqrt(rmsSquares[0]/sampleCounts[0]):0;
         return String.format(Locale.US,"MONO PEAK %.1f dBFS  •  RMS %.1f dBFS\n%s  •  LIMITER: %d",
