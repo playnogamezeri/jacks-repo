@@ -61,6 +61,7 @@ public class StudioActivity extends Activity {
             notice.setPadding(dp(10),dp(14),dp(10),dp(14)); content.addView(notice);
         }
         buildWaveEditor();
+        buildAdvancedEq();
         buildEqualizer();
         buildDynamics();
         buildSpace();
@@ -159,6 +160,13 @@ public class StudioActivity extends Activity {
         box.addView(button("OPEN WAVEFORM EDITOR",()->startActivity(new android.content.Intent(this,WaveEditorActivity.class))));
     }
 
+    private void buildAdvancedEq(){
+        LinearLayout box=section("02 // ADVANCED PARAMETRIC EQ");
+        box.addView(label("CUSTOM BIQUAD DSP • 5-BAND EQ • HPF / LPF FILTERS • NON-DESTRUCTIVE WAV RENDER",10,muted,false));
+        box.addView(button("OPEN ADVANCED EQ WORKSTATION",()->startActivity(new android.content.Intent(this,WaveEditorActivity.class))));
+        box.addView(label("IMPORT AUDIO, SHAPE FIVE EQ BANDS, AUDITION THE PROCESSED SIGNAL, THEN EXPORT A NEW WAV.",9,muted,false));
+    }
+
     private void buildEqualizer(){
         LinearLayout box=section("02 // GRAPHIC EQUALIZER");
         if(eq==null){box.addView(label("EQUALIZER NOT AVAILABLE ON THIS DEVICE / SESSION.",11,muted,false));return;}
@@ -209,7 +217,7 @@ public class StudioActivity extends Activity {
     private void renderBands(){
         // Rebuild the studio screen so the displayed band values match the selected preset.
         if(visualizer!=null){try{visualizer.setEnabled(false);visualizer.release();}catch(Exception ignored){}visualizer=null;}
-        content.removeAllViews(); header(); buildAnalyzer(audioSessionId); buildWaveEditor(); buildEqualizer(); buildDynamics(); buildSpace(); footer();
+        content.removeAllViews(); header(); buildAnalyzer(audioSessionId); buildWaveEditor(); buildAdvancedEq(); buildEqualizer(); buildDynamics(); buildSpace(); footer();
     }
 
     private void renderBandsInto(LinearLayout box){
