@@ -2,6 +2,7 @@ package com.jackgray.winamp;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -25,6 +26,7 @@ import android.widget.Toast;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Locale;
+import org.json.JSONArray;
 
 public class MainActivity extends Activity {
     private final int bg = Color.rgb(12, 12, 19), panel = Color.rgb(30, 30, 48), edge = Color.rgb(145, 139, 111);
@@ -50,6 +52,9 @@ public class MainActivity extends Activity {
         getWindow().setStatusBarColor(bg); getWindow().setNavigationBarColor(bg);
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
         buildUi();
+        loadPlaylist();
+        adapter.notifyDataSetChanged();
+        if(!tracks.isEmpty()) status.setText("PLAYLIST RESTORED     "+tracks.size()+" TRACKS");
     }
 
     private void buildUi() {
@@ -124,8 +129,50 @@ public class MainActivity extends Activity {
     private void addControl(LinearLayout row,String label,Runnable action){Button b=new Button(this);b.setText(label);b.setTextSize(10);b.setTextColor(white);b.setAllCaps(false);b.setPadding(dp(5),0,dp(5),0);b.setMinWidth(0);b.setMinimumWidth(dp(42));b.setMinHeight(dp(38));b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.rgb(66,67,85)));b.setOnClickListener(v->action.run());LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,dp(40));lp.setMargins(dp(2),dp(2),dp(2),dp(2));row.addView(b,lp);}
 
     private void pickFiles(){Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.setType("audio/*");i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);i.addCategory(Intent.CATEGORY_OPENABLE);startActivityForResult(i,100);}
-    @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==100&&result==RESULT_OK&&data!=null){if(data.getClipData()!=null){for(int n=0;n<data.getClipData().getItemCount();n++)addUri(data.getClipData().getItemAt(n).getUri());}else if(data.getData()!=null)addUri(data.getData());adapter.notifyDataSetChanged();if(current<0&&!tracks.isEmpty())playIndex(0);}}
-    private void addUri(Uri u){try{getContentResolver().takePersistableUriPermission(u,Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(Exception ignored){}String name="Audio track";Cursor c=getContentResolver().query(u,null,null,null,null);if(c!=null){if(c.moveToFirst()){int k=c.getColumnIndex(OpenableColumns.DISPLAY_NAME);if(k>=0)name=c.getString(k);}c.close();}tracks.add(u);names.add((names.size()+1)+".  "+name);}
+    @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==100&&result==RESULT_OK&&data!=null){if(data.getClipData()!=null){for(int n=0;n<data.getClipData().getItemCount();n++)addUri(data.getClipData().getItemAt(n).getUri());}else if(data.getData()!=null)addUri(data.getData());adapter.notifyDataSetChanged();savePlaylist();if(current<0&&!tracks.isEmpty())playIndex(0);}}
+    private void addUri(Uri u){
+        if(u==null || tracks.contains(u)) return;
+        try{getContentResolver().takePersistableUriPermission(u,Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(Exception ignored){}
+        String name="Audio track";
+        Cursor c=getContentResolver().query(u,null,null,null,null);
+        if(c!=null){if(c.moveToFirst()){int k=c.getColumnIndex(OpenableColumns.DISPLAY_NAME);if(k>=0)name=c.getString(k);}c.close();}
+        tracks.add(u);names.add((names.size()+1)+".  "+name);
+    }
+
+    // The playlist is saved automatically and restored when the app is reopened.
+    private void savePlaylist(){
+        try{
+            JSONArray items=new JSONArray();
+            for(int i=0;i<tracks.size();i++){
+                org.json.JSONObject item=new org.json.JSONObject();
+                item.put("uri",tracks.get(i).toString());
+                String display=names.get(i).replaceFirst("^\\\\d+\\\\.  ","");
+                item.put("name",display);
+                items.put(item);
+            }
+            getSharedPreferences("winamp_playlist",MODE_PRIVATE).edit().putString("tracks",items.toString()).apply();
+        }catch(Exception e){toast("Could not save playlist");}
+    }
+
+    private void loadPlaylist(){
+        try{
+            SharedPreferences prefs=getSharedPreferences("winamp_playlist",MODE_PRIVATE);
+            JSONArray items=new JSONArray(prefs.getString("tracks","[]"));
+            for(int i=0;i<items.length();i++){
+                org.json.JSONObject item=items.getJSONObject(i);
+                Uri uri=Uri.parse(item.getString("uri"));
+                String name=item.optString("name","Audio track");
+                try{
+                    getContentResolver().openFileDescriptor(uri,"r").close();
+                    tracks.add(uri);
+                    names.add((names.size()+1)+".  "+name);
+                }catch(Exception unavailable){
+                    // Skip files whose original document permission or file is no longer available.
+                }
+            }
+            if(tracks.size()!=items.length()) savePlaylist();
+        }catch(Exception ignored){}
+    }
     private void playIndex(int index){if(index<0||index>=tracks.size())return;releasePlayer();current=index;prepared=false;adapter.notifyDataSetChanged();trackTitle.setText(names.get(index).replaceFirst("^\\d+\\.  ",""));status.setText("LOADING AUDIO...");player=new MediaPlayer();try{player.setDataSource(this,tracks.get(index));player.setOnPreparedListener(mp->{prepared=true;mp.start();duration.setText(time(mp.getDuration()));status.setText("PLAYING     STEREO");initEqualizer(mp.getAudioSessionId());});player.setOnCompletionListener(mp->{if(repeat)playIndex(current);else next();});player.setOnErrorListener((mp,what,extra)->{toast("Unable to play this audio file");status.setText("PLAYBACK ERROR");return true;});player.prepareAsync();}catch(IOException e){toast("Could not open audio file");}}
     private void initEqualizer(int session){
         try {
@@ -223,9 +270,9 @@ public class MainActivity extends Activity {
     private void pause(){if(player!=null&&prepared&&player.isPlaying()){player.pause();status.setText("PAUSED");}}
     private void stop(){if(player!=null&&prepared){player.pause();player.seekTo(0);status.setText("STOPPED");elapsed.setText("0:00");progress.setProgress(0);}}
     private void next(){if(tracks.isEmpty())return;int n=shuffle?(int)(Math.random()*tracks.size()):(current+1)%tracks.size();playIndex(n);}
-    private void removeCurrent(){if(current<0||current>=tracks.size())return;releasePlayer();tracks.remove(current);names.remove(current);current=-1;adapter.notifyDataSetChanged();trackTitle.setText("NO TRACK LOADED");status.setText("READY");elapsed.setText("0:00");duration.setText("0:00");progress.setProgress(0);}
-    private void clearPlaylist(){releasePlayer();tracks.clear();names.clear();current=-1;adapter.notifyDataSetChanged();trackTitle.setText("NO TRACK LOADED");status.setText("READY");elapsed.setText("0:00");duration.setText("0:00");progress.setProgress(0);}
-    private void releasePlayer(){if(player!=null){try{player.stop();}catch(Exception ignored){}player.release();player=null;}prepared=false;if(equalizer!=null){equalizer.release();equalizer=null;}}
+    private void removeCurrent(){if(current<0||current>=tracks.size())return;releasePlayer();tracks.remove(current);names.remove(current);current=-1;renumberPlaylist();savePlaylist();adapter.notifyDataSetChanged();trackTitle.setText("NO TRACK LOADED");status.setText("READY");elapsed.setText("0:00");duration.setText("0:00");progress.setProgress(0);}
+    private void clearPlaylist(){releasePlayer();tracks.clear();names.clear();current=-1;savePlaylist();adapter.notifyDataSetChanged();trackTitle.setText("NO TRACK LOADED");status.setText("READY");elapsed.setText("0:00");duration.setText("0:00");progress.setProgress(0);}
+    private void renumberPlaylist(){for(int i=0;i<names.size();i++)names.set(i,(i+1)+".  "+names.get(i).replaceFirst("^\\\\d+\\\\.  ",""));}\n    private void releasePlayer(){if(player!=null){try{player.stop();}catch(Exception ignored){}player.release();player=null;}prepared=false;if(equalizer!=null){equalizer.release();equalizer=null;}}
     private String time(int ms){int sec=Math.max(0,ms/1000);return String.format(Locale.US,"%d:%02d",sec/60,sec%60);}
     private void toast(String s){Toast.makeText(this,s,Toast.LENGTH_SHORT).show();}
     @Override protected void onResume(){super.onResume();root.post(tick);}
