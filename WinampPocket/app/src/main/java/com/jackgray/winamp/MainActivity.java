@@ -2,6 +2,7 @@ package com.jackgray.winamp;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.graphics.Color;
@@ -55,6 +56,9 @@ public class MainActivity extends Activity {
         getWindow().setStatusBarColor(bg); getWindow().setNavigationBarColor(bg);
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
         buildUi();
+        if(android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 200);
+        }
         loadPlaylist();
         adapter.notifyDataSetChanged();
         player = PlaybackService.getPlayer();
