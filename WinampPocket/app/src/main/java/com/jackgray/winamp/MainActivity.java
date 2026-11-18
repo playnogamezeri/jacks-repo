@@ -39,6 +39,10 @@ public class MainActivity extends Activity {
     private SeekBar progress;
     private ListView playlist;
     private ArrayAdapter<String> adapter;
+    private LinearLayout eqBands;
+    private TextView presetName;
+    private short currentPreset = -1;
+    private boolean eqEnabled = true;
     private LinearLayout root;
 
     @Override public void onCreate(Bundle state) {
@@ -81,24 +85,34 @@ public class MainActivity extends Activity {
 
         LinearLayout eq = panel("WINAMP EQUALIZER"); content.addView(eq);
         LinearLayout eqButtons = new LinearLayout(this); eqButtons.setGravity(Gravity.CENTER_VERTICAL);
-        addControl(eqButtons,"ON",()->{if(equalizer!=null){equalizer.setEnabled(true);toast("Equalizer on");}else toast("Start a track to activate equalizer");});
-        addControl(eqButtons,"OFF",()->{if(equalizer!=null)equalizer.setEnabled(false);});
+        addControl(eqButtons,"ON",()->setEqualizerEnabled(true));
+        addControl(eqButtons,"OFF",()->setEqualizerEnabled(false));
+        addControl(eqButtons,"PRESET",()->cycleEqualizerPreset());
+        presetName = text("PRESET: DEFAULT",10,green,true);
+        presetName.setGravity(Gravity.CENTER_VERTICAL);
+        presetName.setPadding(dp(8),0,0,0);
+        eqButtons.addView(presetName,new LinearLayout.LayoutParams(0,dp(40),1));
         eq.addView(eqButtons);
-        LinearLayout bands = new LinearLayout(this); bands.setGravity(Gravity.CENTER); bands.setPadding(0,dp(3),0,dp(5));
-        String[] labels={"60","170","310","600","1K","3K","6K","12K","14K","16K"};
-        for(String label:labels){ LinearLayout col=new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL); col.setGravity(Gravity.CENTER);
-            SeekBar s=new SeekBar(this); s.setMax(100); s.setProgress(50); s.setRotation(-90); s.setProgressTintList(android.content.res.ColorStateList.valueOf(green)); s.setThumbTintList(android.content.res.ColorStateList.valueOf(white));
-            col.addView(s,new LinearLayout.LayoutParams(dp(27),dp(104)));
-            TextView t=text(label,9,muted,true); col.addView(t); bands.addView(col,new LinearLayout.LayoutParams(0,dp(132),1));
-            final int bandIndex=bands.getChildCount()-1;
-            s.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int v,boolean u){if(equalizer!=null&&u){short[] range=equalizer.getBandLevelRange(); short level=(short)(range[0]+(range[1]-range[0])*v/100); if(bandIndex<equalizer.getNumberOfBands())equalizer.setBandLevel((short)bandIndex,level);}} public void onStartTrackingTouch(SeekBar b){} public void onStopTrackingTouch(SeekBar b){}});
-        }
-        eq.addView(bands);
+        eqBands = new LinearLayout(this);
+        eqBands.setOrientation(LinearLayout.VERTICAL);
+        eqBands.setPadding(dp(5),dp(4),dp(5),dp(4));
+        eq.addView(eqBands);
+        renderEqualizerBands();
 
         LinearLayout pl = panel("WINAMP PLAYLIST"); content.addView(pl);
         playlist = new ListView(this); playlist.setBackgroundColor(Color.BLACK); playlist.setDividerHeight(dp(1)); playlist.setDivider(new android.graphics.drawable.ColorDrawable(Color.rgb(45,45,45)));
         adapter = new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1,names){@Override public View getView(int p,View c,ViewGroup parent){TextView v=(TextView)super.getView(p,c,parent);v.setTextColor(p==current?white:green);v.setTextSize(15);v.setTypeface(Typeface.MONOSPACE,Typeface.BOLD);v.setSingleLine(true);v.setPadding(dp(8),dp(7),dp(8),dp(7));v.setBackgroundColor(Color.BLACK);return v;}};
-        playlist.setAdapter(adapter); playlist.setOnItemClickListener((a,v,pos,id)->playIndex(pos)); pl.addView(playlist,new LinearLayout.LayoutParams(-1,dp(235)));
+        playlist.setAdapter(adapter); playlist.setOnItemClickListener((a,v,pos,id)->playIndex(pos));
+        playlist.setNestedScrollingEnabled(true);
+        playlist.setOnTouchListener((v,event)->{
+            if(event.getAction()==android.view.MotionEvent.ACTION_DOWN || event.getAction()==android.view.MotionEvent.ACTION_MOVE){
+                v.getParent().requestDisallowInterceptTouchEvent(true);
+            } else if(event.getAction()==android.view.MotionEvent.ACTION_UP || event.getAction()==android.view.MotionEvent.ACTION_CANCEL){
+                v.getParent().requestDisallowInterceptTouchEvent(false);
+            }
+            return false;
+        });
+        pl.addView(playlist,new LinearLayout.LayoutParams(-1,dp(235)));
         LinearLayout actions=new LinearLayout(this); actions.setGravity(Gravity.CENTER); addControl(actions,"ADD FILES",()->pickFiles()); addControl(actions,"REMOVE",()->removeCurrent()); addControl(actions,"CLEAR",()->clearPlaylist()); pl.addView(actions);
         TextView foot=text("LOCAL AUDIO PLAYER  •  WINAMP-INSPIRED",10,muted,false); foot.setGravity(Gravity.CENTER); foot.setPadding(0,dp(8),0,0); content.addView(foot);
     }
@@ -113,7 +127,98 @@ public class MainActivity extends Activity {
     @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==100&&result==RESULT_OK&&data!=null){if(data.getClipData()!=null){for(int n=0;n<data.getClipData().getItemCount();n++)addUri(data.getClipData().getItemAt(n).getUri());}else if(data.getData()!=null)addUri(data.getData());adapter.notifyDataSetChanged();if(current<0&&!tracks.isEmpty())playIndex(0);}}
     private void addUri(Uri u){try{getContentResolver().takePersistableUriPermission(u,Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(Exception ignored){}String name="Audio track";Cursor c=getContentResolver().query(u,null,null,null,null);if(c!=null){if(c.moveToFirst()){int k=c.getColumnIndex(OpenableColumns.DISPLAY_NAME);if(k>=0)name=c.getString(k);}c.close();}tracks.add(u);names.add((names.size()+1)+".  "+name);}
     private void playIndex(int index){if(index<0||index>=tracks.size())return;releasePlayer();current=index;prepared=false;adapter.notifyDataSetChanged();trackTitle.setText(names.get(index).replaceFirst("^\\d+\\.  ",""));status.setText("LOADING AUDIO...");player=new MediaPlayer();try{player.setDataSource(this,tracks.get(index));player.setOnPreparedListener(mp->{prepared=true;mp.start();duration.setText(time(mp.getDuration()));status.setText("PLAYING     STEREO");initEqualizer(mp.getAudioSessionId());});player.setOnCompletionListener(mp->{if(repeat)playIndex(current);else next();});player.setOnErrorListener((mp,what,extra)->{toast("Unable to play this audio file");status.setText("PLAYBACK ERROR");return true;});player.prepareAsync();}catch(IOException e){toast("Could not open audio file");}}
-    private void initEqualizer(int session){try{if(equalizer!=null)equalizer.release();equalizer=new Equalizer(0,session);equalizer.setEnabled(true);}catch(Exception ignored){equalizer=null;}}
+    private void initEqualizer(int session){
+        try {
+            if(equalizer!=null) equalizer.release();
+            equalizer=new Equalizer(0,session);
+            equalizer.setEnabled(eqEnabled);
+            currentPreset=-1;
+            if(presetName!=null) presetName.setText("PRESET: CUSTOM");
+            renderEqualizerBands();
+        } catch(Exception ignored) {
+            equalizer=null;
+            if(eqBands!=null) {
+                eqBands.removeAllViews();
+                eqBands.addView(text("EQUALIZER NOT AVAILABLE",11,muted,true));
+            }
+        }
+    }
+
+    private void setEqualizerEnabled(boolean enabled) {
+        eqEnabled=enabled;
+        if(equalizer!=null) {
+            try { equalizer.setEnabled(enabled); } catch(Exception ignored) {}
+        } else {
+            toast("Start a track to activate equalizer");
+            return;
+        }
+        toast("Equalizer "+(enabled?"ON":"OFF"));
+    }
+
+    private void cycleEqualizerPreset() {
+        if(equalizer==null) { toast("Start a track to activate equalizer"); return; }
+        try {
+            short count=equalizer.getNumberOfPresets();
+            if(count<=0) { toast("No equalizer presets available"); return; }
+            currentPreset=(short)((currentPreset+1)%count);
+            equalizer.usePreset(currentPreset);
+            String name=equalizer.getPresetName(currentPreset);
+            presetName.setText("PRESET: "+name.toUpperCase(Locale.US));
+            renderEqualizerBands();
+        } catch(Exception e) { toast("Could not apply preset"); }
+    }
+
+    private void renderEqualizerBands() {
+        if(eqBands==null) return;
+        eqBands.removeAllViews();
+        if(equalizer==null) {
+            eqBands.addView(text("Load a track to enable frequency controls",10,muted,false));
+            return;
+        }
+        try {
+            short count=equalizer.getNumberOfBands();
+            short[] range=equalizer.getBandLevelRange();
+            for(short i=0;i<count;i++) {
+                final short band=i;
+                int center=equalizer.getCenterFreq(band)/1000;
+                String frequency=center>=1000?String.format(Locale.US,"%.1f kHz",center/1000f):center+" Hz";
+                LinearLayout row=new LinearLayout(this);
+                row.setGravity(Gravity.CENTER_VERTICAL);
+                TextView label=text(frequency,10,white,true);
+                row.addView(label,new LinearLayout.LayoutParams(dp(62),dp(36)));
+                SeekBar slider=new SeekBar(this);
+                slider.setMax(100);
+                short actual=equalizer.getBandLevel(band);
+                int initial=(int)(((actual-range[0])*100f)/(range[1]-range[0]));
+                slider.setProgress(Math.max(0,Math.min(100,initial)));
+                slider.setEnabled(eqEnabled);
+                slider.setProgressTintList(android.content.res.ColorStateList.valueOf(green));
+                slider.setThumbTintList(android.content.res.ColorStateList.valueOf(white));
+                row.addView(slider,new LinearLayout.LayoutParams(0,dp(36),1));
+                TextView value=text(String.format(Locale.US,"%+.1f",actual/100f),10,green,true);
+                value.setGravity(Gravity.RIGHT|Gravity.CENTER_VERTICAL);
+                row.addView(value,new LinearLayout.LayoutParams(dp(45),dp(36)));
+                slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
+                    public void onProgressChanged(SeekBar seek,int progress,boolean fromUser) {
+                        if(fromUser && equalizer!=null) {
+                            short level=(short)(range[0]+(range[1]-range[0])*progress/100);
+                            try {
+                                equalizer.setBandLevel(band,level);
+                                value.setText(String.format(Locale.US,"%+.1f",level/100f));
+                                currentPreset=-1;
+                                if(presetName!=null) presetName.setText("PRESET: CUSTOM");
+                            } catch(Exception ignored) {}
+                        }
+                    }
+                    public void onStartTrackingTouch(SeekBar seek) {}
+                    public void onStopTrackingTouch(SeekBar seek) {}
+                });
+                eqBands.addView(row);
+            }
+        } catch(Exception ignored) {
+            eqBands.addView(text("Could not read equalizer bands",10,muted,false));
+        }
+    }
     private void playOrResume(){if(player==null){if(!tracks.isEmpty())playIndex(current<0?0:current);else pickFiles();}else if(prepared&&!player.isPlaying()){player.start();status.setText("PLAYING     STEREO");}}
     private void pause(){if(player!=null&&prepared&&player.isPlaying()){player.pause();status.setText("PAUSED");}}
     private void stop(){if(player!=null&&prepared){player.pause();player.seekTo(0);status.setText("STOPPED");elapsed.setText("0:00");progress.setProgress(0);}}
