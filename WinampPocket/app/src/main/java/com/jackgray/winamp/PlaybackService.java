@@ -60,6 +60,19 @@ public class PlaybackService extends Service {
         else context.startService(intent);
     }
 
+    public static boolean attachAuxEffect(int effectId) {
+        try {
+            if (sharedPlayer == null || !prepared) return false;
+            sharedPlayer.attachAuxEffect(effectId);
+            sharedPlayer.setAuxEffectSendLevel(1.0f);
+            return true;
+        } catch (Exception e) { return false; }
+    }
+
+    public static void detachAuxEffect() {
+        try { if (sharedPlayer != null) sharedPlayer.setAuxEffectSendLevel(0.0f); } catch (Exception ignored) {}
+    }
+
     public static void detachPlayer() {
         sharedPlayer = null;
         currentUri = null;
