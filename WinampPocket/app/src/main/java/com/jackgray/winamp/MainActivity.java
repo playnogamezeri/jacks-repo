@@ -35,8 +35,8 @@ import java.util.Locale;
 import org.json.JSONArray;
 
 public class MainActivity extends Activity {
-    private final int bg = Color.rgb(12, 12, 19), panel = Color.rgb(30, 30, 48), edge = Color.rgb(145, 139, 111);
-    private final int green = Color.rgb(34, 255, 38), white = Color.rgb(232, 232, 232), muted = Color.rgb(160, 160, 170);
+    private final int bg = Color.rgb(3, 8, 15), panel = Color.rgb(7, 20, 31), edge = Color.rgb(0, 190, 210);
+    private final int green = Color.rgb(0, 235, 220), white = Color.rgb(220, 250, 255), muted = Color.rgb(105, 160, 175);
     private final ArrayList<Uri> tracks = new ArrayList<>();
     private final ArrayList<String> names = new ArrayList<>();
     private final ArrayList<Long> addedAt = new ArrayList<>();
@@ -143,6 +143,7 @@ public class MainActivity extends Activity {
         eqBands.setPadding(dp(5),dp(4),dp(5),dp(4));
         eq.addView(eqBands);
         renderEqualizerBands();
+        addControl(eq,"OPEN STUDIO  ↗",()->openStudio());
 
         LinearLayout pl = panel(playlistName); content.addView(pl); playlistHeading = (TextView)pl.getChildAt(0);
         playlist = new ListView(this); playlist.setBackgroundColor(Color.BLACK); playlist.setDividerHeight(dp(1)); playlist.setDivider(new android.graphics.drawable.ColorDrawable(Color.rgb(45,45,45)));
@@ -184,11 +185,18 @@ public class MainActivity extends Activity {
         TextView foot=text("LOCAL AUDIO PLAYER  •  WINAMP-INSPIRED",10,muted,false); foot.setGravity(Gravity.CENTER); foot.setPadding(0,dp(8),0,0); content.addView(foot);
     }
 
-    private LinearLayout panel(String title){ LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(5),dp(4),dp(5),dp(5));box.setBackground(new android.graphics.drawable.GradientDrawable(){ {setColor(panel);setStroke(dp(1),edge);setCornerRadius(dp(3));} }); TextView h=text(title,13,white,true);h.setGravity(Gravity.CENTER);h.setPadding(0,dp(3),0,dp(5));box.addView(h); LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.bottomMargin=dp(9);box.setLayoutParams(lp);return box; }
+    private LinearLayout panel(String title){ LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(5),dp(4),dp(5),dp(5));box.setBackground(new android.graphics.drawable.GradientDrawable(){ {setColor(panel);setStroke(dp(1),edge);setCornerRadius(dp(5));} }); TextView h=text(title,13,white,true);h.setGravity(Gravity.CENTER);h.setPadding(0,dp(3),0,dp(5));box.addView(h); LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.bottomMargin=dp(9);box.setLayoutParams(lp);return box; }
     private TextView text(String s,int size,int color,boolean bold){TextView t=new TextView(this);t.setText(s);t.setTextSize(size);t.setTextColor(color);t.setTypeface(bold?Typeface.MONOSPACE:Typeface.DEFAULT,bold?Typeface.BOLD:Typeface.NORMAL);return t;}
     private LinearLayout.LayoutParams matchWrap(){return new LinearLayout.LayoutParams(-1,-2);}
     private int dp(float n){return (int)(n*getResources().getDisplayMetrics().density+0.5f);}
-    private Button addControl(LinearLayout row,String label,Runnable action){Button b=new Button(this);b.setText(label);b.setTextSize(10);b.setTextColor(white);b.setAllCaps(false);b.setPadding(dp(5),0,dp(5),0);b.setMinWidth(0);b.setMinimumWidth(dp(42));b.setMinHeight(dp(38));b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.rgb(66,67,85)));b.setOnClickListener(v->action.run());LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,dp(40));lp.setMargins(dp(2),dp(2),dp(2),dp(2));row.addView(b,lp);return b;}
+    private Button addControl(LinearLayout row,String label,Runnable action){Button b=new Button(this);b.setText(label);b.setTextSize(10);b.setTextColor(white);b.setAllCaps(false);b.setPadding(dp(5),0,dp(5),0);b.setMinWidth(0);b.setMinimumWidth(dp(42));b.setMinHeight(dp(38));b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.rgb(8,55,72)));b.setOnClickListener(v->action.run());LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,dp(40));lp.setMargins(dp(2),dp(2),dp(2),dp(2));row.addView(b,lp);return b;}
+
+
+    private void openStudio(){
+        Intent intent=new Intent(this,StudioActivity.class);
+        if(player!=null && prepared){try{intent.putExtra("audio_session",player.getAudioSessionId());}catch(Exception ignored){}}
+        startActivity(intent);
+    }
 
     private void toggleMenu(){ if(menuPanel!=null) menuPanel.setVisibility(menuPanel.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE); }
 
