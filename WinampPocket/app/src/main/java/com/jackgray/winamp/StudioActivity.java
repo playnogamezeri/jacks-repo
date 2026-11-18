@@ -39,6 +39,7 @@ public class StudioActivity extends Activity {
     private final String[] reverbNames={"DRY","SMALL ROOM","MEDIUM ROOM","LARGE ROOM","MEDIUM HALL","LARGE HALL","PLATE"};
     private LinearLayout content;
     private boolean effectsReady=false, eqEnabled=true;
+    private int audioSessionId=-1;
 
     @Override protected void onCreate(Bundle state){
         super.onCreate(state);
@@ -49,6 +50,7 @@ public class StudioActivity extends Activity {
         scroll.addView(content); setContentView(scroll);
         header();
         int session=getIntent().getIntExtra("audio_session",-1);
+        audioSessionId=session;
         if(session>0) initializeEffects(session);
         buildAnalyzer(session);
         if(!effectsReady) {
@@ -139,7 +141,7 @@ public class StudioActivity extends Activity {
 
     private void buildEqualizer(){
         LinearLayout box=section("02 // GRAPHIC EQUALIZER");
-        if(!effectsReady){box.addView(label("Unavailable until a track is playing.",11,muted,false));return;}
+        if(eq==null){box.addView(label("EQUALIZER NOT AVAILABLE ON THIS DEVICE / SESSION.",11,muted,false));return;}
         LinearLayout actions=new LinearLayout(this); actions.setGravity(Gravity.CENTER);
         actions.addView(button("FLAT / RESET",()->{try{boolean found=false;for(short i=0;i<eq.getNumberOfPresets();i++){String n=eq.getPresetName(i);if(n!=null&&(n.equalsIgnoreCase("normal")||n.equalsIgnoreCase("flat"))){eq.usePreset(i);found=true;break;}}if(!found){short[] r=eq.getBandLevelRange();for(short i=0;i<eq.getNumberOfBands();i++)eq.setBandLevel(i,(short)Math.max(r[0],Math.min(r[1],0)));}renderBands();}catch(Exception e){toast("Flat reset unavailable");}}));
         actions.addView(button(eqEnabled?"EQ: ON / TAP TO BYPASS":"EQ: BYPASSED / TAP TO ENABLE",()->{try{eqEnabled=!eqEnabled;eq.setEnabled(eqEnabled);renderBands();}catch(Exception e){toast("Equalizer control unavailable");}}));
@@ -149,7 +151,8 @@ public class StudioActivity extends Activity {
 
     private void renderBands(){
         // Rebuild the studio screen so the displayed band values match the selected preset.
-        content.removeAllViews(); header(); buildWaveEditor(); buildEqualizer(); buildDynamics(); buildSpace(); footer();
+        if(visualizer!=null){try{visualizer.setEnabled(false);visualizer.release();}catch(Exception ignored){}visualizer=null;}
+        content.removeAllViews(); header(); buildAnalyzer(audioSessionId); buildWaveEditor(); buildEqualizer(); buildDynamics(); buildSpace(); footer();
     }
 
     private void renderBandsInto(LinearLayout box){
