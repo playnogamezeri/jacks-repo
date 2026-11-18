@@ -48,6 +48,7 @@ public class StudioActivity extends Activity {
             TextView notice=label("PLAY A TRACK IN JACK TUNES FIRST. LIVE STUDIO EFFECTS ATTACH TO THE ACTIVE PLAYBACK SESSION.",12,muted,true);
             notice.setPadding(dp(10),dp(14),dp(10),dp(14)); content.addView(notice);
         }
+        buildWaveEditor();
         buildEqualizer();
         buildDynamics();
         buildSpace();
@@ -77,6 +78,13 @@ public class StudioActivity extends Activity {
         }
     }
 
+
+    private void buildWaveEditor(){
+        LinearLayout box=section("01 // WAVEFORM EDITOR");
+        box.addView(label("Import, select a region, apply edge fades and render a new WAV file.",11,muted,false));
+        box.addView(button("OPEN WAVEFORM EDITOR",()->startActivity(new android.content.Intent(this,WaveEditorActivity.class))));
+    }
+
     private void buildEqualizer(){
         LinearLayout box=section("01 // GRAPHIC EQUALIZER");
         if(!effectsReady){box.addView(label("Unavailable until a track is playing.",11,muted,false));return;}
@@ -89,7 +97,7 @@ public class StudioActivity extends Activity {
 
     private void renderBands(){
         // Rebuild the studio screen so the displayed band values match the selected preset.
-        content.removeAllViews(); header(); buildEqualizer(); buildDynamics(); buildSpace(); footer();
+        content.removeAllViews(); header(); buildWaveEditor(); buildEqualizer(); buildDynamics(); buildSpace(); footer();
     }
 
     private void renderBandsInto(LinearLayout box){
