@@ -44,6 +44,11 @@ public class WaveEditorActivity extends Activity {
     private final double[] eqGains={0,0,0,0,0};
     private final double[] eqFrequencies={80,250,1000,4000,12000};
     private final double[] eqQ={1,1,1,1,1};
+    private final String[] eqTypes={BiquadEqProcessor.PEAK,BiquadEqProcessor.PEAK,BiquadEqProcessor.PEAK,BiquadEqProcessor.PEAK,BiquadEqProcessor.PEAK};
+    private final boolean[] eqBandEnabled={true,true,true,true,true};
+    private final int[] eqSlopes={12,12}; private boolean eqEnabled=true;
+    private Button[] bandTypeButtons=new Button[5],bandBypassButtons=new Button[5];
+    private Button eqMasterButton,hpSlopeButton,lpSlopeButton;
     private final SeekBar[] gainBars=new SeekBar[5],frequencyBars=new SeekBar[5],qBars=new SeekBar[5];
     private SeekBar hpfBar,lpfBar;
     private boolean hpfEnabled=false,lpfEnabled=false;
@@ -101,11 +106,14 @@ public class WaveEditorActivity extends Activity {
         root.addView(label("FREQUENCY RESPONSE PREVIEW",9,muted,true));
         eqCurve=new EqCurveView();root.addView(eqCurve,new LinearLayout.LayoutParams(-1,dp(130)));
         String[] eqNames={"SUB / BASS 80 Hz","LOW 250 Hz","MID 1 kHz","PRESENCE 4 kHz","AIR 12 kHz"};
-        for(int i=0;i<eqNames.length;i++)addEqBand(root,i,eqNames[i]);
+        for(int i=0;i<eqNames.length;i++){addEqBand(root,i,eqNames[i]); final int band=i; bandTypeButtons[i]=button("FILTER: PEAK",()->cycleBandType(band));root.addView(bandTypeButtons[i]); bandBypassButtons[i]=button("BAND ENABLED",()->{eqBandEnabled[band]=!eqBandEnabled[band];updateBandButtons(band);updateEqStatus();});root.addView(bandBypassButtons[i]);}
+        eqMasterButton=button("EQ PROCESSING: ON",()->{eqEnabled=!eqEnabled;updateEqControls();updateEqStatus();});root.addView(eqMasterButton);
         root.addView(button("TOGGLE HIGH-PASS FILTER",()->{hpfEnabled=!hpfEnabled;updateEqStatus();}));
         addCutoffSlider(root,"HPF CUTOFF 20–500 Hz",20,500,40,true);
+        hpSlopeButton=button("HPF SLOPE: 12 dB/OCT",()->{eqSlopes[0]=nextSlope(eqSlopes[0]);updateSlopeButtons();updateEqStatus();});root.addView(hpSlopeButton);
         root.addView(button("TOGGLE LOW-PASS FILTER",()->{lpfEnabled=!lpfEnabled;updateEqStatus();}));
         addCutoffSlider(root,"LPF CUTOFF 2–20 kHz",2000,20000,18000,false);
+        lpSlopeButton=button("LPF SLOPE: 12 dB/OCT",()->{eqSlopes[1]=nextSlope(eqSlopes[1]);updateSlopeButtons();updateEqStatus();});root.addView(lpSlopeButton);
         root.addView(button("RESET ADVANCED EQ",()->resetAdvancedEq()));
         root.addView(button("RENDER SELECTION AS PROCESSED WAV",()->saveWav()));
         root.addView(sectionLabel("STAGE 3 // DYNAMICS & METERING"));
@@ -317,19 +325,36 @@ public class WaveEditorActivity extends Activity {
             public void onStartTrackingTouch(SeekBar b){} public void onStopTrackingTouch(SeekBar b){}
         });
     }
+    private int nextSlope(int v){return v>=24?6:v+6;}
+    private void cycleBandType(int i){
+        String[] t={BiquadEqProcessor.PEAK,BiquadEqProcessor.LOW_SHELF,BiquadEqProcessor.HIGH_SHELF,BiquadEqProcessor.NOTCH,BiquadEqProcessor.BAND_PASS};
+        int n=0;for(int k=0;k<t.length;k++)if(t[k].equals(eqTypes[i]))n=k;
+        eqTypes[i]=t[(n+1)%t.length];updateBandButtons(i);updateEqStatus();
+    }
+    private void updateBandButtons(int i){
+        if(bandTypeButtons[i]!=null)bandTypeButtons[i].setText("FILTER: "+eqTypes[i]);
+        if(bandBypassButtons[i]!=null)bandBypassButtons[i].setText(eqBandEnabled[i]?"BAND ENABLED":"BAND BYPASSED");
+    }
+    private void updateEqControls(){if(eqMasterButton!=null)eqMasterButton.setText(eqEnabled?"EQ PROCESSING: ON":"EQ PROCESSING: BYPASSED");}
+    private void updateSlopeButtons(){
+        if(hpSlopeButton!=null)hpSlopeButton.setText("HPF SLOPE: "+eqSlopes[0]+" dB/OCT");
+        if(lpSlopeButton!=null)lpSlopeButton.setText("LPF SLOPE: "+eqSlopes[1]+" dB/OCT");
+    }
     private void updateEqStatus(){
-        if(eqStatus==null)return;double sum=0;for(double g:eqGains)sum+=Math.abs(g);
-        eqStatus.setText("EQ: "+(sum<0.01?"FLAT":"CUSTOM")+" • HPF "+(hpfEnabled?"ON "+(int)hpfHz+"Hz":"OFF")+" • LPF "+(lpfEnabled?"ON "+(int)lpfHz+"Hz":"OFF"));
+        if(eqStatus==null)return;int active=0;for(boolean b:eqBandEnabled)if(b)active++;
+        eqStatus.setText("EQ "+(eqEnabled?"ON":"BYPASS")+" • "+active+"/5 BANDS • HPF "+(hpfEnabled?"ON":"OFF")+" • LPF "+(lpfEnabled?"ON":"OFF"));
         if(eqCurve!=null)eqCurve.invalidate();
     }
     private void resetAdvancedEq(){
         for(int i=0;i<eqGains.length;i++){eqGains[i]=0;eqFrequencies[i]=new double[]{80,250,1000,4000,12000}[i];eqQ[i]=1;gainBars[i].setProgress(120);frequencyBars[i].setProgress(freqProgress(eqFrequencies[i]));qBars[i].setProgress(15);}
-        hpfEnabled=false;lpfEnabled=false;hpfHz=40;lpfHz=18000;
+        hpfEnabled=false;lpfEnabled=false;hpfHz=40;lpfHz=18000;eqEnabled=true;eqSlopes[0]=12;eqSlopes[1]=12;
+        for(int i=0;i<5;i++){eqTypes[i]=BiquadEqProcessor.PEAK;eqBandEnabled[i]=true;updateBandButtons(i);}
+        updateEqControls();updateSlopeButtons();
         if(hpfBar!=null)hpfBar.setProgress(20);if(lpfBar!=null)lpfBar.setProgress(16000);
         if(presetStatus!=null)presetStatus.setText("PRESET: CUSTOM / FLAT");updateEqStatus();toast("Advanced EQ reset to flat");
     }
     private BiquadEqProcessor createEqProcessor(){
-        return new BiquadEqProcessor(sampleRate,channels,eqGains,eqFrequencies,eqQ,hpfEnabled,hpfHz,lpfEnabled,lpfHz);
+        return new BiquadEqProcessor(sampleRate,channels,eqGains,eqFrequencies,eqQ,eqTypes,eqBandEnabled,hpfEnabled,hpfHz,eqSlopes[0],lpfEnabled,lpfHz,eqSlopes[1],eqEnabled);
     }
 
     private SeekBar slider(LinearLayout root,String title,int initial){
@@ -499,9 +524,7 @@ public class WaveEditorActivity extends Activity {
             for(int i=0;i<=160;i++){
                 double hz=20*Math.pow(1000.0,i/160.0);
                 double db=0;
-                for(int b=0;b<5;b++){double z=Math.log(hz/eqFrequencies[b])/(1.0/Math.max(0.3,eqQ[b]));db+=eqGains[b]*Math.exp(-0.5*z*z);}
-                if(hpfEnabled)db-=Math.max(0,Math.log10(hpfHz/hz)*24);
-                if(lpfEnabled)db-=Math.max(0,Math.log10(hz/lpfHz)*24);
+                db=BiquadEqProcessor.responseDb(sampleRate,hz,eqGains,eqFrequencies,eqQ,eqTypes,eqBandEnabled,hpfEnabled,hpfHz,eqSlopes[0],lpfEnabled,lpfHz,eqSlopes[1],eqEnabled);
                 db=Math.max(-12,Math.min(12,db));
                 float x=left+(right-left)*i/160f;
                 float y=bottom-(float)((db+12)/24.0)*(bottom-top);
