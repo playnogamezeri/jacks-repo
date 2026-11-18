@@ -41,6 +41,10 @@ public class WaveEditorActivity extends Activity {
     private WaveView wave;
     private SeekBar startSeek,endSeek,fadeInSeek,fadeOutSeek;
     private final double[] eqGains={0,0,0,0,0};
+    private final double[] eqFrequencies={80,250,1000,4000,12000};
+    private final double[] eqQ={1,1,1,1,1};
+    private final SeekBar[] gainBars=new SeekBar[5],frequencyBars=new SeekBar[5],qBars=new SeekBar[5];
+    private SeekBar hpfBar,lpfBar;
     private boolean hpfEnabled=false,lpfEnabled=false;
     private double hpfHz=40, lpfHz=18000;
     private TextView eqStatus;
@@ -187,16 +191,30 @@ public class WaveEditorActivity extends Activity {
     }
 
     private void addEqBand(LinearLayout root,int index,String title){
-        TextView value=label(title+"  "+String.format(Locale.US,"%+.1f dB",eqGains[index]),10,white,true);root.addView(value);
-        SeekBar seek=new SeekBar(this);seek.setMax(240);seek.setProgress(120);tint(seek);root.addView(seek);advancedEqBars.add(seek);
-        seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
-            public void onProgressChanged(SeekBar b,int p,boolean user){eqGains[index]=(p-120)/10.0;value.setText(title+"  "+String.format(Locale.US,"%+.1f dB",eqGains[index]));if(user)updateEqStatus();}
+        TextView gainLabel=label(title+"  "+String.format(Locale.US,"%+.1f dB",eqGains[index]),10,white,true);root.addView(gainLabel);
+        SeekBar gain=new SeekBar(this);gain.setMax(240);gain.setProgress(120);tint(gain);root.addView(gain);gainBars[index]=gain;
+        gain.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
+            public void onProgressChanged(SeekBar b,int p,boolean user){eqGains[index]=(p-120)/10.0;gainLabel.setText(title+"  "+String.format(Locale.US,"%+.1f dB",eqGains[index]));if(user)updateEqStatus();}
+            public void onStartTrackingTouch(SeekBar b){} public void onStopTrackingTouch(SeekBar b){}
+        });
+        TextView freqLabel=label("FREQUENCY  "+(int)eqFrequencies[index]+" Hz",9,muted,true);root.addView(freqLabel);
+        SeekBar freq=new SeekBar(this);freq.setMax(1000);freq.setProgress(freqProgress(eqFrequencies[index]));tint(freq);root.addView(freq);frequencyBars[index]=freq;
+        freq.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
+            public void onProgressChanged(SeekBar b,int p,boolean user){eqFrequencies[index]=20*Math.pow(1000.0,p/1000.0);freqLabel.setText("FREQUENCY  "+(int)eqFrequencies[index]+" Hz");if(user)updateEqStatus();}
+            public void onStartTrackingTouch(SeekBar b){} public void onStopTrackingTouch(SeekBar b){}
+        });
+        TextView qLabel=label("Q / BANDWIDTH  "+String.format(Locale.US,"%.2f",eqQ[index]),9,muted,true);root.addView(qLabel);
+        SeekBar q=new SeekBar(this);q.setMax(100);q.setProgress((int)((eqQ[index]-0.3)/4.7*100));tint(q);root.addView(q);qBars[index]=q;
+        q.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
+            public void onProgressChanged(SeekBar b,int p,boolean user){eqQ[index]=0.3+p/100.0*4.7;qLabel.setText("Q / BANDWIDTH  "+String.format(Locale.US,"%.2f",eqQ[index]));if(user)updateEqStatus();}
             public void onStartTrackingTouch(SeekBar b){} public void onStopTrackingTouch(SeekBar b){}
         });
     }
+    private int freqProgress(double hz){return (int)Math.max(0,Math.min(1000,Math.log(hz/20.0)/Math.log(1000.0)*1000));}
     private void addCutoffSlider(LinearLayout root,String title,int min,int max,int initial,boolean highPass){
         TextView value=label(title+"  "+initial+" Hz",9,muted,true);root.addView(value);
-        SeekBar seek=new SeekBar(this);seek.setMax(max-min);seek.setProgress(initial-min);tint(seek);root.addView(seek);advancedEqBars.add(seek);
+        SeekBar seek=new SeekBar(this);seek.setMax(max-min);seek.setProgress(initial-min);tint(seek);root.addView(seek);
+        if(highPass)hpfBar=seek;else lpfBar=seek;
         seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
             public void onProgressChanged(SeekBar b,int p,boolean user){int hz=min+p;if(highPass)hpfHz=hz;else lpfHz=hz;value.setText(title+"  "+hz+" Hz");if(user)updateEqStatus();}
             public void onStartTrackingTouch(SeekBar b){} public void onStopTrackingTouch(SeekBar b){}
@@ -208,16 +226,13 @@ public class WaveEditorActivity extends Activity {
         if(eqCurve!=null)eqCurve.invalidate();
     }
     private void resetAdvancedEq(){
-        for(int i=0;i<eqGains.length;i++)eqGains[i]=0;
+        for(int i=0;i<eqGains.length;i++){eqGains[i]=0;eqFrequencies[i]=new double[]{80,250,1000,4000,12000}[i];eqQ[i]=1;gainBars[i].setProgress(120);frequencyBars[i].setProgress(freqProgress(eqFrequencies[i]));qBars[i].setProgress(15);}
         hpfEnabled=false;lpfEnabled=false;hpfHz=40;lpfHz=18000;
-        for(int i=0;i<advancedEqBars.size();i++){
-            SeekBar b=advancedEqBars.get(i);
-            if(i<5)b.setProgress(120);else if(i==5)b.setProgress(20);else b.setProgress(16000);
-        }
+        if(hpfBar!=null)hpfBar.setProgress(20);if(lpfBar!=null)lpfBar.setProgress(16000);
         updateEqStatus();toast("Advanced EQ reset to flat");
     }
     private BiquadEqProcessor createEqProcessor(){
-        return new BiquadEqProcessor(sampleRate,channels,eqGains,hpfEnabled,hpfHz,lpfEnabled,lpfHz);
+        return new BiquadEqProcessor(sampleRate,channels,eqGains,eqFrequencies,eqQ,hpfEnabled,hpfHz,lpfEnabled,lpfHz);
     }
 
     private SeekBar slider(LinearLayout root,String title,int initial){
@@ -377,8 +392,7 @@ public class WaveEditorActivity extends Activity {
             for(int i=0;i<=160;i++){
                 double hz=20*Math.pow(1000.0,i/160.0);
                 double db=0;
-                double[] centers={80,250,1000,4000,12000};
-                for(int b=0;b<5;b++){double z=Math.log(hz/centers[b])/0.42;db+=eqGains[b]*Math.exp(-0.5*z*z);}
+                for(int b=0;b<5;b++){double z=Math.log(hz/eqFrequencies[b])/(1.0/Math.max(0.3,eqQ[b]));db+=eqGains[b]*Math.exp(-0.5*z*z);}
                 if(hpfEnabled)db-=Math.max(0,Math.log10(hpfHz/hz)*24);
                 if(lpfEnabled)db-=Math.max(0,Math.log10(hz/lpfHz)*24);
                 db=Math.max(-12,Math.min(12,db));
