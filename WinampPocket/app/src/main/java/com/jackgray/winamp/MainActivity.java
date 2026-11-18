@@ -146,7 +146,7 @@ public class MainActivity extends Activity {
             for(int i=0;i<tracks.size();i++){
                 org.json.JSONObject item=new org.json.JSONObject();
                 item.put("uri",tracks.get(i).toString());
-                String display=names.get(i).replaceFirst("^\\\\d+\\\\.  ","");
+                String display=cleanTrackName(names.get(i));
                 item.put("name",display);
                 items.put(item);
             }
