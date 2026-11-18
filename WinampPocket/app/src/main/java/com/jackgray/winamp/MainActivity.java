@@ -63,7 +63,7 @@ public class MainActivity extends Activity {
         LinearLayout content = new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL); content.setPadding(0,0,0,dp(12));
         scroll.addView(content); root.addView(scroll, new LinearLayout.LayoutParams(-1,0,1)); setContentView(root);
 
-        TextView brand = text("WINAMP POCKET", 17, white, true); brand.setGravity(Gravity.CENTER); brand.setPadding(0,dp(5),0,dp(8));
+        TextView brand = text("JACK TUNES", 17, white, true); brand.setGravity(Gravity.CENTER); brand.setPadding(0,dp(5),0,dp(8));
         content.addView(brand);
         LinearLayout main = panel("PLAYER"); content.addView(main);
         LinearLayout screen = new LinearLayout(this); screen.setOrientation(LinearLayout.VERTICAL); screen.setPadding(dp(10),dp(8),dp(10),dp(8)); screen.setBackgroundColor(Color.BLACK);
@@ -118,7 +118,7 @@ public class MainActivity extends Activity {
             return false;
         });
         pl.addView(playlist,new LinearLayout.LayoutParams(-1,dp(235)));
-        LinearLayout actions=new LinearLayout(this); actions.setGravity(Gravity.CENTER); addControl(actions,"ADD FILES",()->pickFiles()); addControl(actions,"REMOVE",()->removeCurrent()); addControl(actions,"CLEAR",()->clearPlaylist()); pl.addView(actions);
+        LinearLayout actions=new LinearLayout(this); actions.setGravity(Gravity.CENTER); addControl(actions,"ADD FILES",()->pickFiles()); addControl(actions,"REMOVE",()->removeCurrent()); addControl(actions,"CLEAR",()->clearPlaylist()); addControl(actions,"EXIT",()->exitApp()); pl.addView(actions);
         TextView foot=text("LOCAL AUDIO PLAYER  •  WINAMP-INSPIRED",10,muted,false); foot.setGravity(Gravity.CENTER); foot.setPadding(0,dp(8),0,0); content.addView(foot);
     }
 
@@ -271,7 +271,7 @@ public class MainActivity extends Activity {
     private void stop(){if(player!=null&&prepared){player.pause();player.seekTo(0);status.setText("STOPPED");elapsed.setText("0:00");progress.setProgress(0);}}
     private void next(){if(tracks.isEmpty())return;int n=shuffle?(int)(Math.random()*tracks.size()):(current+1)%tracks.size();playIndex(n);}
     private void removeCurrent(){if(current<0||current>=tracks.size())return;releasePlayer();tracks.remove(current);names.remove(current);current=-1;renumberPlaylist();savePlaylist();adapter.notifyDataSetChanged();trackTitle.setText("NO TRACK LOADED");status.setText("READY");elapsed.setText("0:00");duration.setText("0:00");progress.setProgress(0);}
-    private void clearPlaylist(){releasePlayer();tracks.clear();names.clear();current=-1;savePlaylist();adapter.notifyDataSetChanged();trackTitle.setText("NO TRACK LOADED");status.setText("READY");elapsed.setText("0:00");duration.setText("0:00");progress.setProgress(0);}
+    private void exitApp(){\n        releasePlayer();\n        finishAndRemoveTask();\n    }\n    private void clearPlaylist(){releasePlayer();tracks.clear();names.clear();current=-1;savePlaylist();adapter.notifyDataSetChanged();trackTitle.setText("NO TRACK LOADED");status.setText("READY");elapsed.setText("0:00");duration.setText("0:00");progress.setProgress(0);}
     private String cleanTrackName(String value){
         int marker=value.indexOf(".  ");
         return marker>=0?value.substring(marker+3):value;
