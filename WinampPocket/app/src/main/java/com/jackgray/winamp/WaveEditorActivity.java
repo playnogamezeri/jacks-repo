@@ -19,6 +19,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.SeekBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -47,7 +48,8 @@ public class WaveEditorActivity extends Activity {
     private SeekBar hpfBar,lpfBar;
     private boolean hpfEnabled=false,lpfEnabled=false;
     private double hpfHz=40, lpfHz=18000;
-    private TextView eqStatus;
+    private TextView eqStatus,presetStatus;
+    private final String[] presetNames={"FLAT","WARM VOCALS","PRESENCE BOOST","PODCAST VOICE","DEEP BASS","CLUB / EDM","HIP-HOP","ROCK GUITARS","ACOUSTIC","JAZZ","CLASSICAL","BRIGHT POP","LO-FI","AIR & DETAIL"};
     private EqCurveView eqCurve;
     private final java.util.ArrayList<SeekBar> advancedEqBars=new java.util.ArrayList<>();
     private File pcmFile;
@@ -87,6 +89,11 @@ public class WaveEditorActivity extends Activity {
         root.addView(sectionLabel("STAGE 2 // ADVANCED PARAMETRIC EQ"));
         root.addView(label("5-BAND BIQUAD IIR • PROCESSING IS APPLIED TO PREVIEW AND EXPORTED WAV",9,muted,true));
         eqStatus=label("EQ: FLAT • HPF OFF • LPF OFF",10,cyan,true);root.addView(eqStatus);
+        presetStatus=label("PRESET: FLAT",10,white,true);root.addView(presetStatus);
+        HorizontalScrollView presetScroll=new HorizontalScrollView(this);presetScroll.setHorizontalScrollBarEnabled(false);
+        LinearLayout presetRow=new LinearLayout(this);presetRow.setOrientation(LinearLayout.HORIZONTAL);
+        for(String name:presetNames)presetRow.addView(button(name,()->applyEqPreset(name)));
+        presetScroll.addView(presetRow);root.addView(presetScroll);
         root.addView(label("FREQUENCY RESPONSE PREVIEW",9,muted,true));
         eqCurve=new EqCurveView();root.addView(eqCurve,new LinearLayout.LayoutParams(-1,dp(130)));
         String[] eqNames={"SUB / BASS 80 Hz","LOW 250 Hz","MID 1 kHz","PRESENCE 4 kHz","AIR 12 kHz"};
@@ -210,6 +217,32 @@ public class WaveEditorActivity extends Activity {
             public void onStartTrackingTouch(SeekBar b){} public void onStopTrackingTouch(SeekBar b){}
         });
     }
+    private void applyEqPreset(String name){
+        double[] g={0,0,0,0,0},f={80,250,1000,4000,12000},q={1,1,1,1,1};
+        boolean hp=false,lp=false;double hpHz=40,lpHz=18000;
+        switch(name){
+            case "WARM VOCALS": g=new double[]{1.5,1.5,0.5,-1.0,-1.5};f=new double[]{90,220,900,3200,10000};break;
+            case "PRESENCE BOOST": g=new double[]{-1,0,1.5,3,1.5};f=new double[]{80,250,1800,4500,11000};break;
+            case "PODCAST VOICE": g=new double[]{-3,1.5,2,2.5,-2};f=new double[]{100,180,900,3200,9000};hp=true;hpHz=75;lp=true;lpHz=14500;break;
+            case "DEEP BASS": g=new double[]{5,3,0,-1.5,-1};f=new double[]{65,140,700,3500,10000};hp=true;hpHz=28;break;
+            case "CLUB / EDM": g=new double[]{4,2,-1,2,3};f=new double[]{55,160,900,5000,12000};hp=true;hpHz=30;break;
+            case "HIP-HOP": g=new double[]{4,2,0,1.5,1};f=new double[]{60,180,900,3800,10500};hp=true;hpHz=30;break;
+            case "ROCK GUITARS": g=new double[]{2,1,0,2.5,1};f=new double[]{90,300,1000,2800,8500};break;
+            case "ACOUSTIC": g=new double[]{1,1.5,1,1.5,2};f=new double[]{100,250,1200,4500,12000};break;
+            case "JAZZ": g=new double[]{1.5,0.5,-0.5,1,1.5};f=new double[]{80,220,800,4000,11000};break;
+            case "CLASSICAL": g=new double[]{0.5,0,-0.5,0.5,1};f=new double[]{70,250,1000,5000,13000};break;
+            case "BRIGHT POP": g=new double[]{0,0.5,1,2.5,2};f=new double[]{80,250,1200,4500,11500};break;
+            case "LO-FI": g=new double[]{2,1,-2,-3,-5};f=new double[]{100,300,1000,3500,8000};lp=true;lpHz=9000;break;
+            case "AIR & DETAIL": g=new double[]{-1,-0.5,0.5,1.5,4};f=new double[]{80,250,1500,6000,14000};break;
+            default: break;
+        }
+        System.arraycopy(g,0,eqGains,0,5);System.arraycopy(f,0,eqFrequencies,0,5);System.arraycopy(q,0,eqQ,0,5);
+        hpfEnabled=hp;lpfEnabled=lp;hpfHz=hpHz;lpfHz=lpHz;
+        for(int i=0;i<5;i++){gainBars[i].setProgress((int)Math.round(g[i]*10)+120);frequencyBars[i].setProgress(freqProgress(f[i]));qBars[i].setProgress(15);}
+        if(hpfBar!=null)hpfBar.setProgress((int)hpHz-20);if(lpfBar!=null)lpfBar.setProgress((int)lpHz-2000);
+        presetStatus.setText("PRESET: "+name);updateEqStatus();
+    }
+
     private int freqProgress(double hz){return (int)Math.max(0,Math.min(1000,Math.log(hz/20.0)/Math.log(1000.0)*1000));}
     private void addCutoffSlider(LinearLayout root,String title,int min,int max,int initial,boolean highPass){
         TextView value=label(title+"  "+initial+" Hz",9,muted,true);root.addView(value);
@@ -229,7 +262,7 @@ public class WaveEditorActivity extends Activity {
         for(int i=0;i<eqGains.length;i++){eqGains[i]=0;eqFrequencies[i]=new double[]{80,250,1000,4000,12000}[i];eqQ[i]=1;gainBars[i].setProgress(120);frequencyBars[i].setProgress(freqProgress(eqFrequencies[i]));qBars[i].setProgress(15);}
         hpfEnabled=false;lpfEnabled=false;hpfHz=40;lpfHz=18000;
         if(hpfBar!=null)hpfBar.setProgress(20);if(lpfBar!=null)lpfBar.setProgress(16000);
-        updateEqStatus();toast("Advanced EQ reset to flat");
+        if(presetStatus!=null)presetStatus.setText("PRESET: CUSTOM / FLAT");updateEqStatus();toast("Advanced EQ reset to flat");
     }
     private BiquadEqProcessor createEqProcessor(){
         return new BiquadEqProcessor(sampleRate,channels,eqGains,eqFrequencies,eqQ,hpfEnabled,hpfHz,lpfEnabled,lpfHz);
@@ -264,7 +297,8 @@ public class WaveEditorActivity extends Activity {
         final long last=totalFrames*endSeek.getProgress()/100;
         if(last<=first){toast("Select a valid audio region");return;}
         previewStop=false;
-        status.setText("PREVIEW PLAYING // SELECTED REGION");
+        final BiquadEqProcessor previewEq=createEqProcessor();
+        status.setText("PREVIEW PLAYING // SELECTED REGION • EQ DSP");
         previewThread=new Thread(()->{
             AudioTrack track=null;
             try(java.io.RandomAccessFile input=new java.io.RandomAccessFile(pcmFile,"r")){
@@ -282,6 +316,7 @@ public class WaveEditorActivity extends Activity {
                 while(remaining>0&&!previewStop){
                     int count=input.read(buffer,0,(int)Math.min(buffer.length,remaining));
                     if(count<0)break;
+                    previewEq.process(buffer,count);
                     int written=0;
                     while(written<count&&!previewStop){
                         int n=track.write(buffer,written,count-written);
@@ -323,6 +358,7 @@ public class WaveEditorActivity extends Activity {
         long fadeInFrames=(long)fadeInSeek.getProgress()*sampleRate/10;
         long fadeOutFrames=(long)fadeOutSeek.getProgress()*sampleRate/10;
         long frameBytes=channels*2L;
+        final BiquadEqProcessor renderEq=createEqProcessor();
         new Thread(()->{
             try(InputStream in=new BufferedInputStream(new FileInputStream(pcmFile));
                 OutputStream out=new BufferedOutputStream(getContentResolver().openOutputStream(destination))){
@@ -333,6 +369,7 @@ public class WaveEditorActivity extends Activity {
                 byte[] block=new byte[32768];long remaining=dataBytes,frame=0;
                 while(remaining>0){
                     int count=in.read(block,0,(int)Math.min(block.length,remaining));if(count<0)break;
+                    renderEq.process(block,count);
                     for(int pos=0;pos+1<count;pos+=2){
                         long f=frame;
                         double gain=1.0;
