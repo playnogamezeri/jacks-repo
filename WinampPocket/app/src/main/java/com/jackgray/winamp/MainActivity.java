@@ -214,8 +214,8 @@ public class MainActivity extends Activity {
             .setNegativeButton("CANCEL",null).setPositiveButton("OPEN",(d,w)->{
                 String link=field.getText().toString().trim();
                 if(!link.startsWith("https://")&&!link.startsWith("http://")) link="https://"+link;
-                if(link.matches("https?://(www\\.)?(youtube\\.com|youtu\\.be)/.*")){
-                    try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(link)));}catch(Exception e){toast("Could not open YouTube link");}
+                if(link.matches("https?://(www\\.)?(m\\.)?(youtube\\.com|youtu\\.be)/.*")){
+                    try{Intent playerIntent=new Intent(this,YoutubePlayerActivity.class);playerIntent.putExtra("youtube_url",link);startActivity(playerIntent);}catch(Exception e){toast("Could not open YouTube player");}
                 }else toast("Enter a valid YouTube URL");
             }).show();
     }
