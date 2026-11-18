@@ -5,7 +5,7 @@ import java.util.Locale;
 /** PCM16 compressor, de-esser, hold gate and block-lookahead peak safety limiter. */
 public final class DynamicsProcessor {
     private static final double CEILING=0.89125094;
-    private final int sampleRate,channels,lookAheadFrames;
+    private final int sampleRate,channels;
     private final double thresholdDb,ratio,attackMs,releaseMs,makeup,gateThreshold,kneeDb,gateHoldMs,deEssAmount;
     private final double[] envelope,peak,rmsSquares,gateGain,highPassState,highBandEnvelope,limiterGain;
     private final long[] sampleCounts,gateHoldFrames;
@@ -23,7 +23,6 @@ public final class DynamicsProcessor {
         gateThreshold=gateThresholdDb<=-60?0:Math.pow(10.0,gateThresholdDb/20.0);
         this.kneeDb=Math.max(0,kneeDb);this.gateHoldMs=Math.max(0,gateHoldMs);
         this.deEssAmount=Math.max(0,Math.min(1,deEssAmount));
-        lookAheadFrames=Math.max(1,(int)(this.sampleRate*0.005));
         envelope=new double[this.channels];peak=new double[this.channels];rmsSquares=new double[this.channels];
         gateGain=new double[this.channels];highPassState=new double[this.channels];
         highBandEnvelope=new double[this.channels];limiterGain=new double[this.channels];
@@ -78,10 +77,10 @@ public final class DynamicsProcessor {
                 gain*=gateGain[c];
             }
 
-            int lookEnd=Math.min(frames,f+lookAheadFrames);
-            double futurePeak=abs;
-            for(int k=f+1;k<lookEnd;k++)futurePeak=Math.max(futurePeak,Math.abs(input[k*channels+c]*gain));
-            double target=futurePeak>CEILING?CEILING/futurePeak:1.0;
+            // Constant-time peak limiting avoids the old nested 5 ms scan,
+            // which repeated hundreds of comparisons per sample during preview.
+            double predictedPeak=abs*gain;
+            double target=predictedPeak>CEILING?CEILING/predictedPeak:1.0;
             if(target<limiterGain[c])limiterGain[c]=target;
             else limiterGain[c]=limiterRelease*limiterGain[c]+(1-limiterRelease)*target;
             double y=x*gain*limiterGain[c];
