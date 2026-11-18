@@ -67,6 +67,7 @@ public class MainActivity extends Activity {
         adapter.notifyDataSetChanged();
         player = PlaybackService.getPlayer();
         prepared = PlaybackService.isPrepared();
+        PlaybackService.setTransportCallbacks(()->{if(current>0)playIndex(current-1);else if(current==0)playIndex(0);},()->next());
         if(player != null) { current = tracks.indexOf(PlaybackService.getCurrentUri()); if(current >= 0) trackTitle.setText(cleanTrackName(names.get(current))); }
         if(!tracks.isEmpty()) status.setText("PLAYLIST RESTORED     "+tracks.size()+" TRACKS");
     }
