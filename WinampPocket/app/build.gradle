@@ -20,9 +20,9 @@ android {
         applicationId 'com.jackgray.winamp'
         minSdk 23
         targetSdk 35
-        versionCode 17
-        versionName '1.3.9'
+        versionCode 18
+        versionName '1.4.0'
     }
 }
 
-// Jack Tunes 1.3.9 waveform preview studio build.
+// Jack Tunes 1.4.0 cyber studio analyzer and controls.
