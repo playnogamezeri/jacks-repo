@@ -8,6 +8,9 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.media.MediaPlayer;
+import android.media.MediaMetadata;
+import android.media.session.MediaSession;
+import android.media.session.PlaybackState;
 import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
@@ -16,10 +19,15 @@ public class PlaybackService extends Service {
     private static final String CHANNEL_ID = "jack_tunes_playback";
     private static final int NOTIFICATION_ID = 4101;
     private static final String ACTION_TOGGLE = "com.jackgray.winamp.TOGGLE";
+    private static final String ACTION_PREVIOUS = "com.jackgray.winamp.PREVIOUS";
+    private static final String ACTION_NEXT = "com.jackgray.winamp.NEXT";
     private static PlaybackService instance;
     private static MediaPlayer sharedPlayer;
     private static Uri currentUri;
     private static boolean prepared;
+    private static String artist = "Unknown artist", trackTitle = "Jack Tunes";
+    private static Runnable previousCallback, nextCallback;
+    private MediaSession mediaSession;
 
     public static void attachPlayer(MediaPlayer player, Uri uri) {
         sharedPlayer = player;
@@ -28,6 +36,14 @@ public class PlaybackService extends Service {
     }
 
     public static void setPrepared(boolean value) { prepared = value; }
+    public static void setTrackInfo(String newArtist,String newTitle) {
+        artist = newArtist == null ? "Unknown artist" : newArtist;
+        trackTitle = newTitle == null ? "Jack Tunes" : newTitle;
+        if(instance != null) instance.updateNotification();
+    }
+    public static void setTransportCallbacks(Runnable previous,Runnable next) {
+        previousCallback = previous; nextCallback = next;
+    }
     public static boolean isPrepared() { return prepared; }
     public static MediaPlayer getPlayer() { return sharedPlayer; }
     public static Uri getCurrentUri() { return currentUri; }
@@ -53,6 +69,15 @@ public class PlaybackService extends Service {
         super.onCreate();
         instance = this;
         createChannel();
+        mediaSession = new MediaSession(this, "JackTunesSession");
+        mediaSession.setCallback(new MediaSession.Callback() {
+            @Override public void onPlay() { toggleTo(true); }
+            @Override public void onPause() { toggleTo(false); }
+            @Override public void onSkipToNext() { if(nextCallback != null) nextCallback.run(); }
+            @Override public void onSkipToPrevious() { if(previousCallback != null) previousCallback.run(); }
+        });
+        mediaSession.setFlags(MediaSession.FLAG_HANDLES_MEDIA_BUTTONS | MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS);
+        mediaSession.setActive(true);
     }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
@@ -61,6 +86,16 @@ public class PlaybackService extends Service {
         }
         startForeground(NOTIFICATION_ID, buildNotification());
         return START_STICKY;
+    }
+
+    private void toggleTo(boolean play) {
+        try {
+            if(sharedPlayer != null && prepared) {
+                if(play && !sharedPlayer.isPlaying()) sharedPlayer.start();
+                else if(!play && sharedPlayer.isPlaying()) sharedPlayer.pause();
+            }
+        } catch(Exception ignored) {}
+        updateNotification();
     }
 
     private void togglePlayback() {
@@ -103,6 +138,13 @@ public class PlaybackService extends Service {
         Notification.Builder builder = Build.VERSION.SDK_INT >= 26
             ? new Notification.Builder(this, CHANNEL_ID)
             : new Notification.Builder(this);
+
+        PendingIntent prevIntent = PendingIntent.getService(this, 3,
+            new Intent(this, PlaybackService.class).setAction(ACTION_PREVIOUS),
+            PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
+        PendingIntent nextIntent = PendingIntent.getService(this, 4,
+            new Intent(this, PlaybackService.class).setAction(ACTION_NEXT),
+            PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
 
         builder.setSmallIcon(playing ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play)
             .setContentTitle(title)
