@@ -32,7 +32,7 @@ public class StudioActivity extends Activity {
             PresetReverb.PRESET_PLATE};
     private final String[] reverbNames={"DRY","SMALL ROOM","MEDIUM ROOM","LARGE ROOM","MEDIUM HALL","LARGE HALL","PLATE"};
     private LinearLayout content;
-    private boolean effectsReady=false;
+    private boolean effectsReady=false, eqEnabled=true;
 
     @Override protected void onCreate(Bundle state){
         super.onCreate(state);
@@ -86,11 +86,11 @@ public class StudioActivity extends Activity {
     }
 
     private void buildEqualizer(){
-        LinearLayout box=section("01 // GRAPHIC EQUALIZER");
+        LinearLayout box=section("02 // GRAPHIC EQUALIZER");
         if(!effectsReady){box.addView(label("Unavailable until a track is playing.",11,muted,false));return;}
         LinearLayout actions=new LinearLayout(this); actions.setGravity(Gravity.CENTER);
         actions.addView(button("FLAT",()->{try{eq.usePreset((short)0);renderBands();}catch(Exception e){toast("Preset unavailable");}}));
-        actions.addView(button("ENABLE / BYPASS",()->toggle(eq.isEnabled(),v->eq.setEnabled(v))));
+        actions.addView(button("ENABLE / BYPASS",()->{eqEnabled=!eqEnabled;eq.setEnabled(eqEnabled);toast(eqEnabled?"Equalizer enabled":"Equalizer bypassed");}));
         box.addView(actions);
         renderBandsInto(box);
     }
@@ -129,14 +129,14 @@ public class StudioActivity extends Activity {
     }
 
     private void buildDynamics(){
-        LinearLayout box=section("02 // LOW-FREQUENCY CONTROL");
+        LinearLayout box=section("03 // LOW-FREQUENCY CONTROL");
         if(!effectsReady){box.addView(label("Bass processing unavailable.",11,muted,false));return;}
         addEffectToggle(box,"BASS BOOST",bass);
         addStrengthSlider(box,"BASS INTENSITY",bass);
     }
 
     private void buildSpace(){
-        LinearLayout box=section("03 // STEREO & AMBIENCE");
+        LinearLayout box=section("04 // STEREO & AMBIENCE");
         if(!effectsReady){box.addView(label("Spatial effects unavailable.",11,muted,false));return;}
         addEffectToggle(box,"STEREO VIRTUALIZER",virtualizer);
         addStrengthSlider(box,"STEREO WIDTH",virtualizer);
