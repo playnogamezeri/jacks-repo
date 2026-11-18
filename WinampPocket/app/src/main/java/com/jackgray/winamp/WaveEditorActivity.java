@@ -109,7 +109,7 @@ public class WaveEditorActivity extends Activity {
         root.addView(button("RENDER SELECTION AS PROCESSED WAV",()->saveWav()));
         root.addView(sectionLabel("STAGE 3 // DYNAMICS & METERING"));
         root.addView(label("COMPRESSOR • NOISE GATE • PEAK LIMITER • MAKEUP GAIN",9,muted,true));
-        meterStatus=label("OUTPUT METER: -- dBFS PEAK  |  -- dBFS RMS",10,cyan,true);root.addView(meterStatus);
+        meterStatus=label("STEREO PEAK / RMS METERS • NO CLIP",10,cyan,true);root.addView(meterStatus);
         dynamicsStatus=label("DYNAMICS: COMPRESSOR -18 dB / 3:1 • GATE OFF",10,white,true);root.addView(dynamicsStatus);
         thresholdBar=dynamicsSlider(root,"COMPRESSOR THRESHOLD",-36,0,-18," dB",0);
         ratioBar=dynamicsSlider(root,"COMPRESSOR RATIO",1,10,3," : 1",1);
@@ -281,6 +281,13 @@ public class WaveEditorActivity extends Activity {
         return new DynamicsProcessor(sampleRate,channels,compressorThreshold,compressorRatio,attackMs,releaseMs,makeupDb,gateThresholdDb);
     }
 
+    private void updateMeterDisplay(String meter){
+        if(meterStatus==null)return;
+        meterStatus.setText(meter);
+        boolean clipping=meter.contains("CLIP DETECTED");
+        meterStatus.setTextColor(clipping?Color.rgb(255,80,80):cyan);
+    }
+
     private void updateDynamicsStatus(){
         if(dynamicsStatus!=null)dynamicsStatus.setText(String.format(Locale.US,
             "DYNAMICS: COMP %.0f dB / %.1f:1 • GATE %s • MAKEUP +%.1f dB",
@@ -290,7 +297,7 @@ public class WaveEditorActivity extends Activity {
     private void resetDynamics(){
         compressorThreshold=-18;compressorRatio=3;attackMs=10;releaseMs=120;makeupDb=0;gateThresholdDb=-60;
         thresholdBar.setProgress(18);ratioBar.setProgress(2);attackBar.setProgress(9);releaseBar.setProgress(100);makeupBar.setProgress(0);gateBar.setProgress(0);
-        updateDynamicsStatus();if(meterStatus!=null)meterStatus.setText("OUTPUT METER: -- dBFS PEAK  |  -- dBFS RMS");
+        updateDynamicsStatus();if(meterStatus!=null)updateMeterDisplay("STEREO PEAK / RMS METERS • NO INPUT CLIP • LIMITER: 0");
     }
 
     private int freqProgress(double hz){return (int)Math.max(0,Math.min(1000,Math.log(hz/20.0)/Math.log(1000.0)*1000));}
@@ -369,7 +376,7 @@ public class WaveEditorActivity extends Activity {
                     if(count<0)break;
                     previewEq.process(buffer,count);
                     previewDynamics.process(buffer,count);
-                    if(meterStatus!=null){String meter=previewDynamics.getMeterText();runOnUiThread(()->meterStatus.setText(meter));}
+                    if(meterStatus!=null){String meter=previewDynamics.getMeterText();runOnUiThread(()->updateMeterDisplay(meter));}
                     int written=0;
                     while(written<count&&!previewStop){
                         int n=track.write(buffer,written,count-written);
@@ -425,7 +432,7 @@ public class WaveEditorActivity extends Activity {
                     int count=in.read(block,0,(int)Math.min(block.length,remaining));if(count<0)break;
                     renderEq.process(block,count);
                     renderDynamics.process(block,count);
-                    if(meterStatus!=null){String meter=renderDynamics.getMeterText();runOnUiThread(()->meterStatus.setText(meter));}
+                    if(meterStatus!=null){String meter=renderDynamics.getMeterText();runOnUiThread(()->updateMeterDisplay(meter));}
                     for(int pos=0;pos+1<count;pos+=2){
                         long f=frame;
                         double gain=1.0;
