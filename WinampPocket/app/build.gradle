@@ -20,9 +20,9 @@ android {
         applicationId 'com.jackgray.winamp'
         minSdk 23
         targetSdk 35
-        versionCode 27
-        versionName '2.2.0'
+        versionCode 28
+        versionName '2.2.1'
     }
 }
 
-// DJ Tune Jack 2.2.0 Advanced EQ and Filter Engine.
+// DJ Tune Jack 2.2.1 Real-Time Audio Preview Fix.
