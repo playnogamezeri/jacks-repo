@@ -38,15 +38,11 @@ public final class DynamicsProcessor {
         double gateRelease=Math.exp(-1.0/(sampleRate*Math.max(0.01,releaseMs/1000.0)));
         double hpCoeff=Math.exp(-2.0*Math.PI*6000.0/sampleRate);
         double limiterRelease=Math.exp(-1.0/(sampleRate*0.050));
-        double[] input=new double[frames*channels];
         for(int f=0;f<frames;f++)for(int c=0;c<channels;c++){
             int p=f*frameBytes+c*2;
-            short v=(short)((data[p]&255)|((data[p+1]&255)<<8));
-            input[f*channels+c]=v/32768.0;
-            inputPeak=Math.max(inputPeak,Math.abs(input[f*channels+c]));
-        }
-        for(int f=0;f<frames;f++)for(int c=0;c<channels;c++){
-            double x=input[f*channels+c],abs=Math.abs(x);
+            short sample=(short)((data[p]&255)|((data[p+1]&255)<<8));
+            double x=sample/32768.0,abs=Math.abs(x);
+            inputPeak=Math.max(inputPeak,abs);
             double coeff=abs>envelope[c]?attack:release;
             envelope[c]=coeff*envelope[c]+(1-coeff)*abs;
             double levelDb=20*Math.log10(Math.max(1e-9,envelope[c]));
