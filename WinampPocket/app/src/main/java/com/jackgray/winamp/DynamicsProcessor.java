@@ -84,7 +84,7 @@ public final class DynamicsProcessor {
             y=Math.max(-CEILING,Math.min(CEILING,y));
             peak[c]=Math.max(peak[c],Math.abs(y));rmsSquares[c]+=y*y;sampleCounts[c]++;
             int value=(int)Math.round(y*32768.0);value=Math.max(-32768,Math.min(32767,value));
-            int p=f*frameBytes+c*2;data[p]=(byte)value;data[p+1]=(byte)(value>>8);
+            int outputOffset=f*frameBytes+c*2;data[outputOffset]=(byte)value;data[outputOffset+1]=(byte)(value>>8);
         }
     }
 
