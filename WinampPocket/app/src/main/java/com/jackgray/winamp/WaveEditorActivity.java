@@ -161,7 +161,7 @@ public class WaveEditorActivity extends Activity {
         TextView t=label(title+"   "+initial+"%",10,white,true);root.addView(t);
         SeekBar b=new SeekBar(this);b.setMax(100);b.setProgress(initial);tint(b);root.addView(b);
         b.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
-            public void onProgressChanged(SeekBar s,int p,boolean user){t.setText(title+"   "+p+(title.contains("SEC")?"%":"%"));if(user&&totalFrames>0)updateSelection();}
+            public void onProgressChanged(SeekBar s,int p,boolean user){t.setText(title+"   "+(title.contains("SEC")?String.format(Locale.US,"%.1f sec",p/10f):p+"%"));if(user&&totalFrames>0)updateSelection();}
             public void onStartTrackingTouch(SeekBar s){}
             public void onStopTrackingTouch(SeekBar s){}
         });return b;
