@@ -97,6 +97,7 @@ public class MainActivity extends Activity {
         menuPanel.addView(menuRow1);
         LinearLayout menuRow2 = new LinearLayout(this); menuRow2.setGravity(Gravity.CENTER);
         addControl(menuRow2,"RENAME PLAYLIST",()->renamePlaylist());
+        addControl(menuRow2,"EXPORT CURRENT TRACK",()->exportCurrentTrack());
         menuPanel.addView(menuRow2);
         content.addView(menuPanel);
         LinearLayout main = panel("PLAYER"); content.addView(main);
@@ -207,6 +208,38 @@ public class MainActivity extends Activity {
         startActivityForResult(i,102);
     }
 
+    private void exportCurrentTrack(){
+        if(current<0 || current>=tracks.size()){
+            toast("Select a local audio track first");
+            return;
+        }
+        Uri source=tracks.get(current);
+        String filename=cleanTrackName(names.get(current));
+        if(filename.trim().isEmpty()) filename="JackTunes-audio";
+        Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        String mime=getContentResolver().getType(source);
+        intent.setType(mime!=null?mime:"application/octet-stream");
+        intent.putExtra(Intent.EXTRA_TITLE,filename);
+        startActivityForResult(intent,103);
+        toast("Export keeps the original audio format");
+    }
+
+    private void copyCurrentTrack(Uri destination){
+        if(current<0 || current>=tracks.size()) return;
+        try(InputStream in=getContentResolver().openInputStream(tracks.get(current));
+            OutputStream out=getContentResolver().openOutputStream(destination)){
+            if(in==null || out==null) throw new IOException("Could not open audio file");
+            byte[] buffer=new byte[16384];
+            int count;
+            while((count=in.read(buffer))!=-1) out.write(buffer,0,count);
+            out.flush();
+            toast("Audio file exported");
+        }catch(Exception e){
+            toast("Could not export audio file");
+        }
+    }
+
     private void playYoutubeLink(){
         android.widget.EditText field=new android.widget.EditText(this);
         field.setSingleLine(true); field.setHint("Paste a YouTube video link");
@@ -258,7 +291,7 @@ public class MainActivity extends Activity {
     }
 
     private void pickFiles(){Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.setType("audio/*");i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);i.addCategory(Intent.CATEGORY_OPENABLE);startActivityForResult(i,100);}
-    @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(result==RESULT_OK&&data!=null&&request==101){writePlaylistFile(data.getData());return;}if(result==RESULT_OK&&data!=null&&request==102){readPlaylistFile(data.getData());return;}if(request==100&&result==RESULT_OK&&data!=null){if(data.getClipData()!=null){for(int n=0;n<data.getClipData().getItemCount();n++)addUri(data.getClipData().getItemAt(n).getUri());}else if(data.getData()!=null)addUri(data.getData());adapter.notifyDataSetChanged();savePlaylist();if(current<0&&!tracks.isEmpty())playIndex(0);}}
+    @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(result==RESULT_OK&&data!=null&&request==101){writePlaylistFile(data.getData());return;}if(result==RESULT_OK&&data!=null&&request==102){readPlaylistFile(data.getData());return;}if(result==RESULT_OK&&data!=null&&request==103){copyCurrentTrack(data.getData());return;}if(request==100&&result==RESULT_OK&&data!=null){if(data.getClipData()!=null){for(int n=0;n<data.getClipData().getItemCount();n++)addUri(data.getClipData().getItemAt(n).getUri());}else if(data.getData()!=null)addUri(data.getData());adapter.notifyDataSetChanged();savePlaylist();if(current<0&&!tracks.isEmpty())playIndex(0);}}
     private void addUri(Uri u){
         if(u==null || tracks.contains(u)) return;
         try{getContentResolver().takePersistableUriPermission(u,Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(Exception ignored){}
