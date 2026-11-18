@@ -44,6 +44,7 @@ public class WaveEditorActivity extends Activity {
     private boolean hpfEnabled=false,lpfEnabled=false;
     private double hpfHz=40, lpfHz=18000;
     private TextView eqStatus;
+    private final java.util.ArrayList<SeekBar> advancedEqBars=new java.util.ArrayList<>();
     private File pcmFile;
     private int sampleRate=44100,channels=2;
     private long totalFrames=0;
@@ -180,6 +181,39 @@ public class WaveEditorActivity extends Activity {
                 try{extractor.release();}catch(Exception ignored){}
             }
         }).start();
+    }
+
+    private void addEqBand(LinearLayout root,int index,String title){
+        TextView value=label(title+"  "+String.format(Locale.US,"%+.1f dB",eqGains[index]),10,white,true);root.addView(value);
+        SeekBar seek=new SeekBar(this);seek.setMax(240);seek.setProgress(120);tint(seek);root.addView(seek);advancedEqBars.add(seek);
+        seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
+            public void onProgressChanged(SeekBar b,int p,boolean user){eqGains[index]=(p-120)/10.0;value.setText(title+"  "+String.format(Locale.US,"%+.1f dB",eqGains[index]));if(user)updateEqStatus();}
+            public void onStartTrackingTouch(SeekBar b){} public void onStopTrackingTouch(SeekBar b){}
+        });
+    }
+    private void addCutoffSlider(LinearLayout root,String title,int min,int max,int initial,boolean highPass){
+        TextView value=label(title+"  "+initial+" Hz",9,muted,true);root.addView(value);
+        SeekBar seek=new SeekBar(this);seek.setMax(max-min);seek.setProgress(initial-min);tint(seek);root.addView(seek);advancedEqBars.add(seek);
+        seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
+            public void onProgressChanged(SeekBar b,int p,boolean user){int hz=min+p;if(highPass)hpfHz=hz;else lpfHz=hz;value.setText(title+"  "+hz+" Hz");if(user)updateEqStatus();}
+            public void onStartTrackingTouch(SeekBar b){} public void onStopTrackingTouch(SeekBar b){}
+        });
+    }
+    private void updateEqStatus(){
+        if(eqStatus==null)return;double sum=0;for(double g:eqGains)sum+=Math.abs(g);
+        eqStatus.setText("EQ: "+(sum<0.01?"FLAT":"CUSTOM")+" • HPF "+(hpfEnabled?"ON "+(int)hpfHz+"Hz":"OFF")+" • LPF "+(lpfEnabled?"ON "+(int)lpfHz+"Hz":"OFF"));
+    }
+    private void resetAdvancedEq(){
+        for(int i=0;i<eqGains.length;i++)eqGains[i]=0;
+        hpfEnabled=false;lpfEnabled=false;hpfHz=40;lpfHz=18000;
+        for(int i=0;i<advancedEqBars.size();i++){
+            SeekBar b=advancedEqBars.get(i);
+            if(i<5)b.setProgress(120);else if(i==5)b.setProgress(20);else b.setProgress(16000);
+        }
+        updateEqStatus();toast("Advanced EQ reset to flat");
+    }
+    private BiquadEqProcessor createEqProcessor(){
+        return new BiquadEqProcessor(sampleRate,channels,eqGains,hpfEnabled,hpfHz,lpfEnabled,lpfHz);
     }
 
     private SeekBar slider(LinearLayout root,String title,int initial){
