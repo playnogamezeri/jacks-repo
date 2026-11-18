@@ -980,7 +980,7 @@ private fun LyricsScreen(onBack: () -> Unit, onRecordingSaved: (File) -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             OutlinedButton(onClick = onBack) { Text("← Studio") }
             Spacer(Modifier.weight(1f))
-            Text("TOON JACK  /  LYRIC BOOK", color = Teal, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.3.sp)
+            Text("JACK TUNES  /  LYRIC BOOK", color = Teal, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.3.sp)
         }
         Text("Write your song.", color = Ink, fontSize = 28.sp, fontWeight = FontWeight.Bold)
         Text("A private space for hooks, verses, bridges, and unfinished ideas.", color = Muted, fontSize = 12.sp)
