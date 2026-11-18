@@ -12,8 +12,8 @@ android {
         applicationId = "com.toonjack.studio"
         minSdk = 26
         targetSdk = 35
-        versionCode = 16
-        versionName = "1.2.3"
+        versionCode = 17
+        versionName = "1.2.4"
     }
 
     // CI supplies one long-lived keystore from GitHub Actions secrets.
