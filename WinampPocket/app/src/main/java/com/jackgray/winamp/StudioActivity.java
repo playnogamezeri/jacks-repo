@@ -133,24 +133,47 @@ public class StudioActivity extends Activity {
     }
 
     private class AnalyzerView extends View {
+        private static final int BAR_COUNT=48;
         private final Paint paint=new Paint(3);
+        private final float[] peakHold=new float[BAR_COUNT];
         private byte[] bins=new byte[0];
         AnalyzerView(){super(StudioActivity.this);setBackgroundColor(Color.rgb(1,5,10));}
         void setFft(byte[] data){bins=data.clone();postInvalidate();}
         @Override protected void onDraw(Canvas canvas){
             super.onDraw(canvas);
             float w=getWidth(),h=getHeight();
-            int n=Math.min(64,bins.length/2);
-            if(n<=1){paint.setColor(muted);paint.setTextSize(dp(10));canvas.drawText("WAITING FOR AUDIO SIGNAL...",dp(8),h/2,paint);return;}
-            float gap=dp(2),bar=(w-gap*(n+1))/n;
-            for(int i=1;i<=n;i++){
-                int re=bins[i*2],im=bins[i*2+1];
-                double mag=Math.sqrt(re*re+im*im);
-                float level=(float)Math.min(1.0,mag/90.0);
-                float bh=Math.max(dp(2),level*(h-dp(8)));
-                float x=gap+i*(bar+gap);
-                paint.setColor(cyan);canvas.drawRect(x,h-bh,x+bar,h,paint);
+            if(bins.length<8){
+                paint.setColor(muted);paint.setTextSize(dp(10));
+                canvas.drawText("WAITING FOR AUDIO SIGNAL...",dp(8),h/2,paint);return;
             }
+            float gap=dp(2),barWidth=(w-gap*(BAR_COUNT+1))/BAR_COUNT;
+            int maxBin=Math.max(2,bins.length/4);
+            for(int i=0;i<BAR_COUNT;i++){
+                int from=Math.max(1,(int)Math.floor(Math.pow(maxBin,(double)i/BAR_COUNT)));
+                int to=Math.max(from+1,(int)Math.ceil(Math.pow(maxBin,(double)(i+1)/BAR_COUNT)));
+                to=Math.min(maxBin+1,to);
+                double magnitude=0;
+                for(int bin=from;bin<to;bin++){
+                    int index=bin*2;
+                    if(index+1>=bins.length)break;
+                    int re=bins[index],im=bins[index+1];
+                    magnitude=Math.max(magnitude,Math.sqrt(re*re+im*im));
+                }
+                double db=20.0*Math.log10(Math.max(1.0,magnitude)/128.0);
+                float level=(float)Math.max(0.0,Math.min(1.0,(db+60.0)/60.0));
+                peakHold[i]=Math.max(level,Math.max(0,peakHold[i]-0.025f));
+                float x=gap+i*(barWidth+gap);
+                float barHeight=Math.max(dp(2),level*(h-dp(22)));
+                float peakY=h-dp(22)-peakHold[i]*(h-dp(22));
+                paint.setColor(cyan);
+                canvas.drawRect(x,h-dp(18)-barHeight,x+barWidth,h-dp(18),paint);
+                paint.setColor(white);
+                canvas.drawRect(x,peakY-dp(2),x+barWidth,peakY,paint);
+            }
+            paint.setColor(muted);paint.setTextSize(dp(8));
+            canvas.drawText("BASS",dp(4),h-dp(4),paint);
+            canvas.drawText("MID",w/2-dp(10),h-dp(4),paint);
+            canvas.drawText("TREBLE",w-dp(48),h-dp(4),paint);
         }
     }
 
