@@ -40,6 +40,10 @@ public class WaveEditorActivity extends Activity {
     private TextView fileLabel,selectionLabel,status;
     private WaveView wave;
     private SeekBar startSeek,endSeek,fadeInSeek,fadeOutSeek;
+    private final double[] eqGains={0,0,0,0,0};
+    private boolean hpfEnabled=false,lpfEnabled=false;
+    private double hpfHz=40, lpfHz=18000;
+    private TextView eqStatus;
     private File pcmFile;
     private int sampleRate=44100,channels=2;
     private long totalFrames=0;
@@ -74,7 +78,17 @@ public class WaveEditorActivity extends Activity {
         root.addView(sectionLabel("EDGE FADES"));
         fadeInSeek=slider(root,"FADE IN (0–10 SEC)",0);
         fadeOutSeek=slider(root,"FADE OUT (0–10 SEC)",0);
-        root.addView(button("RENDER SELECTION AS WAV",()->saveWav()));
+        root.addView(sectionLabel("STAGE 2 // ADVANCED PARAMETRIC EQ"));
+        root.addView(label("5-BAND BIQUAD IIR • PROCESSING IS APPLIED TO PREVIEW AND EXPORTED WAV",9,muted,true));
+        eqStatus=label("EQ: FLAT • HPF OFF • LPF OFF",10,cyan,true);root.addView(eqStatus);
+        String[] eqNames={"SUB / BASS 80 Hz","LOW 250 Hz","MID 1 kHz","PRESENCE 4 kHz","AIR 12 kHz"};
+        for(int i=0;i<eqNames.length;i++)addEqBand(root,i,eqNames[i]);
+        root.addView(button("TOGGLE HIGH-PASS FILTER",()->{hpfEnabled=!hpfEnabled;updateEqStatus();}));
+        addCutoffSlider(root,"HPF CUTOFF 20–500 Hz",20,500,40,true);
+        root.addView(button("TOGGLE LOW-PASS FILTER",()->{lpfEnabled=!lpfEnabled;updateEqStatus();}));
+        addCutoffSlider(root,"LPF CUTOFF 2–20 kHz",2000,20000,18000,false);
+        root.addView(button("RESET ADVANCED EQ",()->resetAdvancedEq()));
+        root.addView(button("RENDER SELECTION AS EQ-PROCESSED WAV",()->saveWav()));
         status=label("READY // ORIGINAL FILES ARE NEVER OVERWRITTEN",10,muted,true);
         status.setPadding(0,dp(12),0,0);root.addView(status);
     }
