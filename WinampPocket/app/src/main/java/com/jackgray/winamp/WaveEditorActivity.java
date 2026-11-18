@@ -49,9 +49,10 @@ public class WaveEditorActivity extends Activity {
     private boolean hpfEnabled=false,lpfEnabled=false;
     private double hpfHz=40, lpfHz=18000;
     private TextView eqStatus,presetStatus;
-    private SeekBar thresholdBar,ratioBar,attackBar,releaseBar,makeupBar,gateBar;
+    private SeekBar thresholdBar,ratioBar,attackBar,releaseBar,makeupBar,gateBar,kneeBar,gateHoldBar,deEssBar;
     private TextView dynamicsStatus,meterStatus;
     private double compressorThreshold=-18.0, compressorRatio=3.0, attackMs=10.0, releaseMs=120.0, makeupDb=0.0, gateThresholdDb=-60.0;
+    private double kneeDb=6.0,gateHoldMs=80.0,deEssAmount=0.0;
     private final String[] presetNames={"FLAT","WARM VOCALS","PRESENCE BOOST","PODCAST VOICE","DEEP BASS","CLUB / EDM","HIP-HOP","ROCK GUITARS","ACOUSTIC","JAZZ","CLASSICAL","BRIGHT POP","LO-FI","AIR & DETAIL"};
     private EqCurveView eqCurve;
     private final java.util.ArrayList<SeekBar> advancedEqBars=new java.util.ArrayList<>();
@@ -117,6 +118,9 @@ public class WaveEditorActivity extends Activity {
         releaseBar=dynamicsSlider(root,"RELEASE",20,500,120," ms",3);
         makeupBar=dynamicsSlider(root,"MAKEUP GAIN",0,12,0," dB",4);
         gateBar=dynamicsSlider(root,"NOISE GATE THRESHOLD (OFF AT -60)",-60,-20,-60," dB",5);
+        kneeBar=dynamicsSlider(root,"COMPRESSOR SOFT KNEE",0,12,6," dB",6);
+        gateHoldBar=dynamicsSlider(root,"GATE HOLD",0,300,80," ms",7);
+        deEssBar=dynamicsSlider(root,"DE-ESSER AMOUNT",0,100,0,"%",8);
         root.addView(button("RESET DYNAMICS",()->resetDynamics()));
         status=label("READY // ORIGINAL FILES ARE NEVER OVERWRITTEN",10,muted,true);
         status.setPadding(0,dp(12),0,0);root.addView(status);
@@ -268,7 +272,10 @@ public class WaveEditorActivity extends Activity {
                 else if(kind==2)attackMs=v;
                 else if(kind==3)releaseMs=v;
                 else if(kind==4)makeupDb=v;
-                else gateThresholdDb=v;
+                else if(kind==5)gateThresholdDb=v;
+                else if(kind==6)kneeDb=v;
+                else if(kind==7)gateHoldMs=v;
+                else deEssAmount=v/100.0;
                 updateDynamicsStatus();
             }
             public void onStartTrackingTouch(SeekBar b){}
@@ -278,7 +285,7 @@ public class WaveEditorActivity extends Activity {
     }
 
     private DynamicsProcessor createDynamicsProcessor(){
-        return new DynamicsProcessor(sampleRate,channels,compressorThreshold,compressorRatio,attackMs,releaseMs,makeupDb,gateThresholdDb);
+        return new DynamicsProcessor(sampleRate,channels,compressorThreshold,compressorRatio,attackMs,releaseMs,makeupDb,gateThresholdDb,kneeDb,gateHoldMs,deEssAmount);
     }
 
     private void updateMeterDisplay(String meter){
@@ -290,13 +297,13 @@ public class WaveEditorActivity extends Activity {
 
     private void updateDynamicsStatus(){
         if(dynamicsStatus!=null)dynamicsStatus.setText(String.format(Locale.US,
-            "DYNAMICS: COMP %.0f dB / %.1f:1 • GATE %s • MAKEUP +%.1f dB",
-            compressorThreshold,compressorRatio,gateThresholdDb<=-60?"OFF":String.format(Locale.US,"%.0f dB",gateThresholdDb),makeupDb));
+            "COMP %.0f dB / %.1f:1 • KNEE %.0f dB • GATE %s • DE-ESS %.0f%%",
+            compressorThreshold,compressorRatio,kneeDb,gateThresholdDb<=-60?"OFF":String.format(Locale.US,"%.0f dB",gateThresholdDb),deEssAmount*100));
     }
 
     private void resetDynamics(){
-        compressorThreshold=-18;compressorRatio=3;attackMs=10;releaseMs=120;makeupDb=0;gateThresholdDb=-60;
-        thresholdBar.setProgress(18);ratioBar.setProgress(2);attackBar.setProgress(9);releaseBar.setProgress(100);makeupBar.setProgress(0);gateBar.setProgress(0);
+        compressorThreshold=-18;compressorRatio=3;attackMs=10;releaseMs=120;makeupDb=0;gateThresholdDb=-60;kneeDb=6;gateHoldMs=80;deEssAmount=0;
+        thresholdBar.setProgress(18);ratioBar.setProgress(2);attackBar.setProgress(9);releaseBar.setProgress(100);makeupBar.setProgress(0);gateBar.setProgress(0);kneeBar.setProgress(6);gateHoldBar.setProgress(80);deEssBar.setProgress(0);
         updateDynamicsStatus();if(meterStatus!=null)updateMeterDisplay("STEREO PEAK / RMS METERS • NO INPUT CLIP • LIMITER: 0");
     }
 
