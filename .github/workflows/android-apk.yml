@@ -1,4 +1,4 @@
-name: Build Jack Tone Android APK
+name: Build Toon Studio Android APK
 
 on:
   workflow_dispatch:
@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: jack-tone-android-build
+  group: toon-studio-android-build
   cancel-in-progress: true
 
 jobs:
@@ -41,7 +41,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.android/debug.keystore
-          key: toon-jack-debug-signing-key-v1
+          key: jack-tunes-debug-signing-key-v1
       - name: Ensure debug signing key exists
         run: |
           mkdir -p "$HOME/.android"
@@ -64,6 +64,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: jack-tone-debug-apk
+          name: toon-studio-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
