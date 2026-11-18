@@ -272,7 +272,21 @@ public class MainActivity extends Activity {
     private void next(){if(tracks.isEmpty())return;int n=shuffle?(int)(Math.random()*tracks.size()):(current+1)%tracks.size();playIndex(n);}
     private void removeCurrent(){if(current<0||current>=tracks.size())return;releasePlayer();tracks.remove(current);names.remove(current);current=-1;renumberPlaylist();savePlaylist();adapter.notifyDataSetChanged();trackTitle.setText("NO TRACK LOADED");status.setText("READY");elapsed.setText("0:00");duration.setText("0:00");progress.setProgress(0);}
     private void clearPlaylist(){releasePlayer();tracks.clear();names.clear();current=-1;savePlaylist();adapter.notifyDataSetChanged();trackTitle.setText("NO TRACK LOADED");status.setText("READY");elapsed.setText("0:00");duration.setText("0:00");progress.setProgress(0);}
-    private void renumberPlaylist(){for(int i=0;i<names.size();i++)names.set(i,(i+1)+".  "+names.get(i).replaceFirst("^\\\\d+\\\\.  ",""));}\n    private void releasePlayer(){if(player!=null){try{player.stop();}catch(Exception ignored){}player.release();player=null;}prepared=false;if(equalizer!=null){equalizer.release();equalizer=null;}}
+    private String cleanTrackName(String value){
+        int marker=value.indexOf(".  ");
+        return marker>=0?value.substring(marker+3):value;
+    }
+
+    private void renumberPlaylist(){
+        for(int i=0;i<names.size();i++) names.set(i,(i+1)+".  "+cleanTrackName(names.get(i)));
+    }
+
+    private void releasePlayer(){
+        if(player!=null){try{player.stop();}catch(Exception ignored){}player.release();player=null;}
+        prepared=false;
+        if(equalizer!=null){equalizer.release();equalizer=null;}
+    }
+
     private String time(int ms){int sec=Math.max(0,ms/1000);return String.format(Locale.US,"%d:%02d",sec/60,sec%60);}
     private void toast(String s){Toast.makeText(this,s,Toast.LENGTH_SHORT).show();}
     @Override protected void onResume(){super.onResume();root.post(tick);}
