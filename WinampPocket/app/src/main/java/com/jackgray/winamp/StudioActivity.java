@@ -124,7 +124,8 @@ public class StudioActivity extends Activity {
             box.addView(button("ANALYZER ON / OFF",()->{try{boolean next=!visualizer.getEnabled();visualizer.setEnabled(next);toast(next?"Analyzer running":"Analyzer paused");}catch(Exception e){toast("Analyzer unavailable");}}));
         } catch(Exception e) {
             if(visualizer!=null){try{visualizer.release();}catch(Exception ignored){}visualizer=null;}
-            if(analyzerStatus!=null)analyzerStatus.setText("ANALYZER: NOT SUPPORTED");\n            box.addView(label("LIVE CAPTURE NOT SUPPORTED BY THIS DEVICE / SESSION.",10,muted,false));
+            if(analyzerStatus!=null)analyzerStatus.setText("ANALYZER: NOT SUPPORTED");
+            box.addView(label("LIVE CAPTURE NOT SUPPORTED BY THIS DEVICE / SESSION.",10,muted,false));
         }
     }
 
@@ -166,7 +167,39 @@ public class StudioActivity extends Activity {
         renderBandsInto(box);
     }
 
-    private void applyEqPreset(String name){\n        if(eq==null)return;\n        try{\n            short[] range=eq.getBandLevelRange();\n            double[][] profiles={\n                {0,0,0,0,0,0,0,0,0,0},\n                {5,5,4,2,0,0,0,0,0,0},\n                {8,7,5,2,0,0,0,0,0,0},\n                {0,0,0,0,0,1,2,3,4,4},\n                {-2,-1,1,3,4,3,1,0,-1,-2},\n                {4,3,1,-1,-2,0,2,3,4,4},\n                {-1,1,3,3,1,-1,0,2,3,2},\n                {3,2,0,-1,1,2,3,2,1,2},\n                {3,2,0,1,-1,-1,0,2,3,3},\n                {5,4,1,0,-1,0,2,3,4,3},\n                {6,5,2,0,-1,0,2,3,4,4},\n                {2,1,0,2,3,2,0,1,2,2},\n                {-2,-1,1,3,4,3,1,0,-1,-2}\n            };\n            String[] names={"FLAT","BASS","BASS+","TREBLE","VOCAL","ROCK","POP","JAZZ","CLASSICAL","DANCE","HIP-HOP","ACOUSTIC","PODCAST"};\n            int idx=0;while(idx<names.length&&!names[idx].equals(name))idx++;\n            for(short b=0;b<eq.getNumberOfBands();b++){\n                double hz=Math.max(20,eq.getCenterFreq(b)/1000.0);\n                double position=(Math.log10(hz)-Math.log10(31.25))/(Math.log10(16000)-Math.log10(31.25))*9.0;\n                int lo=(int)Math.floor(Math.max(0,Math.min(9,position)));int hi=Math.min(9,lo+1);double t=Math.max(0,Math.min(1,position-lo));\n                double db=profiles[idx][lo]*(1-t)+profiles[idx][hi]*t;\n                short level=(short)Math.max(range[0],Math.min(range[1],Math.round(db*100)));eq.setBandLevel(b,level);\n            }\n            eqPresetName=name;if(eqPresetStatus!=null)eqPresetStatus.setText("EQ PROFILE: "+name);renderBands();\n        }catch(Exception e){toast("Could not apply "+name+" preset");}\n    }\n\n    private void renderBands(){
+    private void applyEqPreset(String name){
+        if(eq==null)return;
+        try{
+            short[] range=eq.getBandLevelRange();
+            double[][] profiles={
+                {0,0,0,0,0,0,0,0,0,0},
+                {5,5,4,2,0,0,0,0,0,0},
+                {8,7,5,2,0,0,0,0,0,0},
+                {0,0,0,0,0,1,2,3,4,4},
+                {-2,-1,1,3,4,3,1,0,-1,-2},
+                {4,3,1,-1,-2,0,2,3,4,4},
+                {-1,1,3,3,1,-1,0,2,3,2},
+                {3,2,0,-1,1,2,3,2,1,2},
+                {3,2,0,1,-1,-1,0,2,3,3},
+                {5,4,1,0,-1,0,2,3,4,3},
+                {6,5,2,0,-1,0,2,3,4,4},
+                {2,1,0,2,3,2,0,1,2,2},
+                {-2,-1,1,3,4,3,1,0,-1,-2}
+            };
+            String[] names={"FLAT","BASS","BASS+","TREBLE","VOCAL","ROCK","POP","JAZZ","CLASSICAL","DANCE","HIP-HOP","ACOUSTIC","PODCAST"};
+            int idx=0;while(idx<names.length&&!names[idx].equals(name))idx++;
+            for(short b=0;b<eq.getNumberOfBands();b++){
+                double hz=Math.max(20,eq.getCenterFreq(b)/1000.0);
+                double position=(Math.log10(hz)-Math.log10(31.25))/(Math.log10(16000)-Math.log10(31.25))*9.0;
+                int lo=(int)Math.floor(Math.max(0,Math.min(9,position)));int hi=Math.min(9,lo+1);double t=Math.max(0,Math.min(1,position-lo));
+                double db=profiles[idx][lo]*(1-t)+profiles[idx][hi]*t;
+                short level=(short)Math.max(range[0],Math.min(range[1],Math.round(db*100)));eq.setBandLevel(b,level);
+            }
+            eqPresetName=name;if(eqPresetStatus!=null)eqPresetStatus.setText("EQ PROFILE: "+name);renderBands();
+        }catch(Exception e){toast("Could not apply "+name+" preset");}
+    }
+
+    private void renderBands(){
         // Rebuild the studio screen so the displayed band values match the selected preset.
         if(visualizer!=null){try{visualizer.setEnabled(false);visualizer.release();}catch(Exception ignored){}visualizer=null;}
         content.removeAllViews(); header(); buildAnalyzer(audioSessionId); buildWaveEditor(); buildEqualizer(); buildDynamics(); buildSpace(); footer();
@@ -201,20 +234,23 @@ public class StudioActivity extends Activity {
     }
 
     private void buildDynamics(){
-        LinearLayout box=section("03 // LOW-FREQUENCY CONTROL");\n        bassStatus=label("BASS EFFECT: "+(bass!=null?(bassEnabled?"ACTIVE":"BYPASSED"):"UNAVAILABLE"),10,cyan,true);box.addView(bassStatus);
+        LinearLayout box=section("03 // LOW-FREQUENCY CONTROL");
+        bassStatus=label("BASS EFFECT: "+(bass!=null?(bassEnabled?"ACTIVE":"BYPASSED"):"UNAVAILABLE"),10,cyan,true);box.addView(bassStatus);
         if(bass==null){box.addView(label("BASS BOOST NOT SUPPORTED BY THIS DEVICE.",11,muted,false));return;}
         box.addView(button(bassEnabled?"BASS BOOST: ON / TAP TO BYPASS":"BASS BOOST: OFF / TAP TO ENABLE",()->{try{bassEnabled=!bassEnabled;bass.setEnabled(bassEnabled);bassStatus.setText("BASS EFFECT: "+(bassEnabled?"ACTIVE":"BYPASSED"));toast(bassEnabled?"Bass boost enabled":"Bass boost bypassed");}catch(Exception e){bassStatus.setText("BASS EFFECT: CONTROL ERROR");toast("Bass boost unavailable");}}));
         addStrengthSlider(box,"BASS INTENSITY",bass);
     }
 
     private void buildSpace(){
-        LinearLayout box=section("04 // STEREO & AMBIENCE");\n        virtualizerStatus=label("VIRTUALIZER: "+(virtualizer!=null?(virtualizerEnabled?"ACTIVE":"BYPASSED"):"UNAVAILABLE"),10,cyan,true);box.addView(virtualizerStatus);
+        LinearLayout box=section("04 // STEREO & AMBIENCE");
+        virtualizerStatus=label("VIRTUALIZER: "+(virtualizer!=null?(virtualizerEnabled?"ACTIVE":"BYPASSED"):"UNAVAILABLE"),10,cyan,true);box.addView(virtualizerStatus);
         if(virtualizer!=null){
             box.addView(button(virtualizerEnabled?"VIRTUALIZER: ON / TAP TO BYPASS":"VIRTUALIZER: OFF / TAP TO ENABLE",()->{try{virtualizerEnabled=!virtualizerEnabled;virtualizer.setEnabled(virtualizerEnabled);virtualizerStatus.setText("VIRTUALIZER: "+(virtualizerEnabled?"ACTIVE":"BYPASSED"));toast(virtualizerEnabled?"Stereo processing enabled":"Stereo processing bypassed");}catch(Exception e){virtualizerStatus.setText("VIRTUALIZER: CONTROL ERROR");toast("Virtualizer unavailable");}}));
             addStrengthSlider(box,"STEREO WIDTH",virtualizer);
         } else box.addView(label("VIRTUALIZER NOT SUPPORTED BY THIS DEVICE.",10,muted,false));
         LinearLayout row=new LinearLayout(this); row.setGravity(Gravity.CENTER_VERTICAL);
-        reverbStatus=label(reverb==null?"REVERB: NOT SUPPORTED":"REVERB: "+reverbNames[reverbIndex]+" • OFF",11,cyan,true);\n        TextView preset=reverbStatus;
+        reverbStatus=label(reverb==null?"REVERB: NOT SUPPORTED":"REVERB: "+reverbNames[reverbIndex]+" • OFF",11,cyan,true);
+        TextView preset=reverbStatus;
         row.addView(preset,new LinearLayout.LayoutParams(0,dp(42),1));
         row.addView(button("NEXT SPACE",()->{
             if(reverb==null){toast("Reverb unavailable");return;}
@@ -231,7 +267,8 @@ public class StudioActivity extends Activity {
                 }else{
                     PlaybackService.detachAuxEffect();reverb.setEnabled(false);reverbEnabled=false;
                 }
-                reverbStatus.setText("REVERB: "+reverbNames[reverbIndex]+" • "+(reverbEnabled?"ACTIVE":"OFF"));\n                toast(reverbEnabled?"Reverb enabled":"Reverb bypassed");
+                reverbStatus.setText("REVERB: "+reverbNames[reverbIndex]+" • "+(reverbEnabled?"ACTIVE":"OFF"));
+                toast(reverbEnabled?"Reverb enabled":"Reverb bypassed");
             }catch(Exception e){toast("Reverb routing unavailable");}
         }));
         else box.addView(label("AUXILIARY REVERB NOT SUPPORTED.",10,muted,false));
