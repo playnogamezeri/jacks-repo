@@ -27,6 +27,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Locale;
 import org.json.JSONArray;
@@ -41,6 +44,9 @@ public class MainActivity extends Activity {
     private final ArrayList<String> trackTitles = new ArrayList<>();
     private int sortMode = 0;
     private Button sortButton;
+    private LinearLayout menuPanel;
+    private TextView playlistHeading;
+    private String playlistName = "MY MUSIC LIST";
     private MediaPlayer player;
     private Equalizer equalizer;
     private int current = -1;
@@ -78,8 +84,21 @@ public class MainActivity extends Activity {
         LinearLayout content = new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL); content.setPadding(0,0,0,dp(12));
         scroll.addView(content); root.addView(scroll, new LinearLayout.LayoutParams(-1,0,1)); setContentView(root);
 
+        LinearLayout topBar = new LinearLayout(this); topBar.setGravity(Gravity.CENTER_VERTICAL);
         TextView brand = text("JACK TUNES", 17, white, true); brand.setGravity(Gravity.CENTER); brand.setPadding(0,dp(5),0,dp(8));
-        content.addView(brand);
+        topBar.addView(brand,new LinearLayout.LayoutParams(0,-2,1));
+        addControl(topBar,"MENU ▼",()->toggleMenu());
+        content.addView(topBar);
+        menuPanel = new LinearLayout(this); menuPanel.setOrientation(LinearLayout.VERTICAL); menuPanel.setPadding(dp(6),dp(5),dp(6),dp(5)); menuPanel.setBackgroundColor(panel); menuPanel.setVisibility(View.GONE);
+        LinearLayout menuRow1 = new LinearLayout(this); menuRow1.setGravity(Gravity.CENTER);
+        addControl(menuRow1,"SAVE PLAYLIST",()->savePlaylistAsFile());
+        addControl(menuRow1,"OPEN PLAYLIST",()->openPlaylistFile());
+        addControl(menuRow1,"PLAY YOUTUBE LINK",()->playYoutubeLink());
+        menuPanel.addView(menuRow1);
+        LinearLayout menuRow2 = new LinearLayout(this); menuRow2.setGravity(Gravity.CENTER);
+        addControl(menuRow2,"RENAME PLAYLIST",()->renamePlaylist());
+        menuPanel.addView(menuRow2);
+        content.addView(menuPanel);
         LinearLayout main = panel("PLAYER"); content.addView(main);
         LinearLayout screen = new LinearLayout(this); screen.setOrientation(LinearLayout.VERTICAL); screen.setPadding(dp(10),dp(8),dp(10),dp(8)); screen.setBackgroundColor(Color.BLACK);
         main.addView(screen, matchWrap());
@@ -103,7 +122,7 @@ public class MainActivity extends Activity {
         volRow.addView(volume,new LinearLayout.LayoutParams(0,dp(30),1)); main.addView(volRow);
         volume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int v,boolean user){if(player!=null)player.setVolume(v/100f,v/100f);}public void onStartTrackingTouch(SeekBar b){}public void onStopTrackingTouch(SeekBar b){}});
 
-        LinearLayout eq = panel("WINAMP EQUALIZER"); content.addView(eq);
+        LinearLayout eq = panel("JACK TUNERS"); content.addView(eq);
         LinearLayout eqButtons = new LinearLayout(this); eqButtons.setGravity(Gravity.CENTER_VERTICAL);
         addControl(eqButtons,"ON",()->setEqualizerEnabled(true));
         addControl(eqButtons,"OFF",()->setEqualizerEnabled(false));
@@ -119,7 +138,7 @@ public class MainActivity extends Activity {
         eq.addView(eqBands);
         renderEqualizerBands();
 
-        LinearLayout pl = panel("WINAMP PLAYLIST"); content.addView(pl);
+        LinearLayout pl = panel(playlistName); content.addView(pl); playlistHeading = (TextView)pl.getChildAt(0);
         playlist = new ListView(this); playlist.setBackgroundColor(Color.BLACK); playlist.setDividerHeight(dp(1)); playlist.setDivider(new android.graphics.drawable.ColorDrawable(Color.rgb(45,45,45)));
         adapter = new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1,names){@Override public View getView(int p,View c,ViewGroup parent){TextView v=(TextView)super.getView(p,c,parent);v.setText(displayTrack(p));v.setTextColor(p==current?white:green);v.setTextSize(15);v.setTypeface(Typeface.MONOSPACE,Typeface.BOLD);v.setSingleLine(true);v.setPadding(dp(8),dp(7),dp(8),dp(7));v.setBackgroundColor(Color.BLACK);return v;}};
         playlist.setAdapter(adapter); playlist.setOnItemClickListener((a,v,pos,id)->playIndex(pos));
@@ -165,8 +184,81 @@ public class MainActivity extends Activity {
     private int dp(float n){return (int)(n*getResources().getDisplayMetrics().density+0.5f);}
     private Button addControl(LinearLayout row,String label,Runnable action){Button b=new Button(this);b.setText(label);b.setTextSize(10);b.setTextColor(white);b.setAllCaps(false);b.setPadding(dp(5),0,dp(5),0);b.setMinWidth(0);b.setMinimumWidth(dp(42));b.setMinHeight(dp(38));b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.rgb(66,67,85)));b.setOnClickListener(v->action.run());LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,dp(40));lp.setMargins(dp(2),dp(2),dp(2),dp(2));row.addView(b,lp);return b;}
 
+    private void toggleMenu(){ if(menuPanel!=null) menuPanel.setVisibility(menuPanel.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE); }
+
+    private void renamePlaylist(){
+        android.widget.EditText field=new android.widget.EditText(this);
+        field.setSingleLine(true); field.setText(playlistName); field.setSelection(field.getText().length());
+        new android.app.AlertDialog.Builder(this).setTitle("Rename playlist").setView(field)
+            .setNegativeButton("CANCEL",null).setPositiveButton("SAVE",(d,w)->{
+                String value=field.getText().toString().trim();
+                if(!value.isEmpty()){playlistName=value; if(playlistHeading!=null)playlistHeading.setText(playlistName); savePlaylist(); toast("Playlist renamed");}
+            }).show();
+    }
+
+    private void savePlaylistAsFile(){
+        Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT); i.setType("application/json");
+        i.putExtra(Intent.EXTRA_TITLE,playlistName.replaceAll("[^a-zA-Z0-9 _-]","").trim()+".json");
+        i.addCategory(Intent.CATEGORY_OPENABLE); startActivityForResult(i,101);
+    }
+
+    private void openPlaylistFile(){
+        Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT); i.setType("*/*"); i.addCategory(Intent.CATEGORY_OPENABLE);
+        startActivityForResult(i,102);
+    }
+
+    private void playYoutubeLink(){
+        android.widget.EditText field=new android.widget.EditText(this);
+        field.setSingleLine(true); field.setHint("Paste a YouTube video link");
+        new android.app.AlertDialog.Builder(this).setTitle("Play YouTube link").setView(field)
+            .setNegativeButton("CANCEL",null).setPositiveButton("OPEN",(d,w)->{
+                String link=field.getText().toString().trim();
+                if(!link.startsWith("https://")&&!link.startsWith("http://")) link="https://"+link;
+                if(link.matches("https?://(www\\.)?(youtube\\.com|youtu\\.be)/.*")){
+                    try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(link)));}catch(Exception e){toast("Could not open YouTube link");}
+                }else toast("Enter a valid YouTube URL");
+            }).show();
+    }
+
+    private void writePlaylistFile(Uri uri){
+        try{
+            JSONArray items=new JSONArray();
+            for(int i=0;i<tracks.size();i++){
+                org.json.JSONObject item=new org.json.JSONObject();
+                item.put("uri",tracks.get(i).toString()); item.put("name",cleanTrackName(names.get(i)));
+                item.put("addedAt",addedAt.get(i)); item.put("artist",artists.get(i)); item.put("title",trackTitles.get(i)); items.put(item);
+            }
+            org.json.JSONObject root=new org.json.JSONObject(); root.put("format","JackTunesPlaylist"); root.put("version",1); root.put("name",playlistName); root.put("tracks",items);
+            OutputStream out=getContentResolver().openOutputStream(uri);
+            if(out==null) throw new IOException("Cannot open destination");
+            out.write(root.toString(2).getBytes(StandardCharsets.UTF_8)); out.close(); toast("Playlist exported");
+        }catch(Exception e){toast("Could not save playlist");}
+    }
+
+    private void readPlaylistFile(Uri uri){
+        try{
+            InputStream in=getContentResolver().openInputStream(uri); if(in==null)throw new IOException("Cannot open playlist");
+            java.io.ByteArrayOutputStream buffer=new java.io.ByteArrayOutputStream(); byte[] data=new byte[4096]; int n;
+            while((n=in.read(data))!=-1)buffer.write(data,0,n); in.close();
+            org.json.JSONObject root=new org.json.JSONObject(new String(buffer.toByteArray(),StandardCharsets.UTF_8));
+            JSONArray items=root.getJSONArray("tracks");
+            tracks.clear(); names.clear(); addedAt.clear(); artists.clear(); trackTitles.clear(); current=-1;
+            for(int i=0;i<items.length();i++){
+                org.json.JSONObject item=items.getJSONObject(i); Uri u=Uri.parse(item.getString("uri"));
+                try{getContentResolver().takePersistableUriPermission(u,Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(Exception ignored){}
+                String name=item.optString("name","Audio track"); String[] meta=readMetadata(u,name);
+                tracks.add(u); names.add((names.size()+1)+".  "+name); addedAt.add(item.optLong("addedAt",System.currentTimeMillis()));
+                artists.add(item.optString("artist",meta[0])); trackTitles.add(item.optString("title",meta[1]));
+            }
+            playlistName=root.optString("name","MY MUSIC LIST"); if(playlistHeading!=null)playlistHeading.setText(playlistName);
+            releasePlayer(); stopService(new Intent(this,PlaybackService.class)); savePlaylist(); adapter.notifyDataSetChanged();
+            trackTitle.setText("NO TRACK LOADED"); status.setText("PLAYLIST OPENED"); elapsed.setText("0:00"); duration.setText("0:00"); progress.setProgress(0);
+            toast("Opened "+playlistName+" ("+tracks.size()+" tracks)");
+        }catch(Exception e){toast("Could not open playlist. Check that its audio files are still accessible.");}
+    }
+
     private void pickFiles(){Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.setType("audio/*");i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);i.addCategory(Intent.CATEGORY_OPENABLE);startActivityForResult(i,100);}
-    @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==100&&result==RESULT_OK&&data!=null){if(data.getClipData()!=null){for(int n=0;n<data.getClipData().getItemCount();n++)addUri(data.getClipData().getItemAt(n).getUri());}else if(data.getData()!=null)addUri(data.getData());adapter.notifyDataSetChanged();savePlaylist();if(current<0&&!tracks.isEmpty())playIndex(0);}}
+    @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(result==RESULT_OK&&data!=null&&request==101){writePlaylistFile(data.getData());return;}if(result==RESULT_OK&&data!=null&&request==102){readPlaylistFile(data.getData());return;}if(request==100&&result==RESULT_OK&&data!=null){if(data.getClipData()!=null){for(int n=0;n<data.getClipData().getItemCount();n++)addUri(data.getClipData().getItemAt(n).getUri());}else if(data.getData()!=null)addUri(data.getData());adapter.notifyDataSetChanged();savePlaylist();if(current<0&&!tracks.isEmpty())playIndex(0);}}
     private void addUri(Uri u){
         if(u==null || tracks.contains(u)) return;
         try{getContentResolver().takePersistableUriPermission(u,Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(Exception ignored){}
@@ -188,7 +280,7 @@ public class MainActivity extends Activity {
                 item.put("addedAt",addedAt.get(i));item.put("artist",artists.get(i));item.put("title",trackTitles.get(i));
                 items.put(item);
             }
-            getSharedPreferences("winamp_playlist",MODE_PRIVATE).edit().putString("tracks",items.toString()).putInt("sortMode",sortMode).apply();
+            getSharedPreferences("winamp_playlist",MODE_PRIVATE).edit().putString("tracks",items.toString()).putInt("sortMode",sortMode).putString("playlistName",playlistName).apply();
         }catch(Exception e){toast("Could not save playlist");}
     }
 
@@ -196,7 +288,7 @@ public class MainActivity extends Activity {
         try{
             SharedPreferences prefs=getSharedPreferences("winamp_playlist",MODE_PRIVATE);
             JSONArray items=new JSONArray(prefs.getString("tracks","[]"));
-            sortMode=prefs.getInt("sortMode",0);
+            sortMode=prefs.getInt("sortMode",0);\n            playlistName=prefs.getString("playlistName","MY MUSIC LIST");\n            if(playlistHeading!=null) playlistHeading.setText(playlistName);
             for(int i=0;i<items.length();i++){
                 org.json.JSONObject item=items.getJSONObject(i);
                 Uri uri=Uri.parse(item.getString("uri"));
