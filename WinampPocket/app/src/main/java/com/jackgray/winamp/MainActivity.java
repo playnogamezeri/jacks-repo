@@ -84,6 +84,18 @@ public class MainActivity extends Activity {
         android.widget.ScrollView scroll = new android.widget.ScrollView(this);
         LinearLayout content = new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL); content.setPadding(0,0,0,dp(12));
         scroll.addView(content); root.addView(scroll, new LinearLayout.LayoutParams(-1,0,1)); setContentView(root);
+        // Keep the top controls below the Android status bar on edge-to-edge devices.
+        root.setOnApplyWindowInsetsListener((view,insets)->{
+            int statusBarInset;
+            if(android.os.Build.VERSION.SDK_INT>=30){
+                statusBarInset=insets.getInsets(android.view.WindowInsets.Type.statusBars()).top;
+            }else{
+                statusBarInset=insets.getSystemWindowInsetTop();
+            }
+            view.setPadding(dp(10),dp(8)+statusBarInset,dp(10),dp(8));
+            return insets;
+        });
+        root.requestApplyInsets();
 
         LinearLayout topBar = new LinearLayout(this); topBar.setGravity(Gravity.CENTER_VERTICAL);
         topBar.setOrientation(LinearLayout.VERTICAL);
