@@ -590,7 +590,7 @@ private fun JackTunesApp() {
 }
 
 
-private data class PracticeSong(val title: String, val style: String, val focus: String, val chords: String, val lyrics: String)
+private data class PracticeSong(val title: String, val style: String, val focus: String, val chords: String, val lyrics: String, val tempo: String = "", val key: String = "", val capo: String = "", val strumming: String = "")
 
 private val acousticPracticeSongs = listOf(
     PracticeSong("Stay Until the Morning", "Gentle acoustic pop", "Soft tenor and breath control", "G – D – Em – C", """[Verse 1]
@@ -915,6 +915,363 @@ And it follows you home
 [Outro]
 Home is a feeling
 And it follows you home.""")
+    ,
+    PracticeSong("Where the River Goes", "Acoustic folk", "Open-chord transitions and steady eighth-note strumming", "G – D – Em – C", """[Verse 1]
+I watched the river cross the land
+Like silver running through my hands
+It never asked where it should go
+It only moved with what it knows
+
+[Chorus]
+Where the river goes, I'll follow
+Through the sunshine, through tomorrow
+Even when the road is winding
+There is something worth the finding
+Where the river goes, I'll be
+Finding out what makes me free
+
+[Verse 2]
+The mountains stand, the seasons change
+The world outside is never the same
+But every mile that passes by
+Leaves another reason why
+
+[Bridge]
+Let the water carry me
+To the person I could be""", "88 BPM", "G major", "None", "Down, Down-Up, Up-Down-Up"),
+    PracticeSong("Coffee and the Rain", "Acoustic pop", "Relaxed eighth-note strumming and clean chord changes", "C – G – Am – F", """[Verse 1]
+Coffee cooling by the window
+Raindrops dancing on the glass
+There's a thousand things to worry
+But today I'll let them pass
+
+[Chorus]
+Coffee and the rain
+Wash away the yesterday
+I don't need a perfect morning
+I just need a little space
+Coffee and the rain
+Let me breathe and start again
+
+[Verse 2]
+Little birds are finding shelter
+People hurry down the street
+I can hear the world awakening
+To a rhythm soft and sweet
+
+[Bridge]
+Maybe happiness is hiding
+In the ordinary things""", "96 BPM", "C major", "None", "Gentle eighth-note strumming"),
+    PracticeSong("Wildflower Heart", "Acoustic country", "Country boom-chuck bass-and-chord coordination", "G – D – A – Bm", """[Verse 1]
+You were growing by the roadside
+Where nobody stopped to see
+With your colors in the sunshine
+And your roots beneath the weeds
+
+[Chorus]
+You've got a wildflower heart
+Beautiful just as you are
+You don't need somebody's garden
+You were born to reach the stars
+Let the whole world fall apart
+You've got a wildflower heart
+
+[Verse 2]
+Every storm became a teacher
+Every winter made you strong
+You were never made for hiding
+You were always meant to bloom
+
+[Bridge]
+Grow wherever life may take you
+Let your colors fill the sky""", "104 BPM", "D major (capo 2 shapes)", "2nd fret", "Country boom-chuck"),
+    PracticeSong("The Weight of Yesterday", "Acoustic ballad", "Slow fingerpicked arpeggios and even dynamics", "Em – C – G – D", """[Verse 1]
+I carried every broken moment
+Like a stone inside my chest
+Tried to make the past forgiving
+Never giving myself rest
+
+[Chorus]
+I can't change yesterday
+I can't make the years rewind
+But I'll put these stones behind me
+Leave their shadows far behind
+I am more than what has happened
+I am more than yesterday
+
+[Verse 2]
+There were words I should have spoken
+There were doors I should have closed
+But the future keeps on waiting
+For a heart that still has hope
+
+[Bridge]
+One breath, one step
+One chance to begin again""", "72 BPM", "E minor", "None", "Fingerpicked arpeggios"),
+    PracticeSong("Dancing in the Kitchen", "Acoustic indie pop", "Bright rhythmic strumming and upbeat timing", "G – C – Em – D", """[Verse 1]
+There's a song upon the radio
+And the sunlight's on the floor
+You come running from the hallway
+Like we've never danced before
+
+[Chorus]
+We're dancing in the kitchen
+With our shadows on the wall
+Nothing really matters
+When we're laughing through it all
+Let the dishes wait until tomorrow
+Let the whole world disappear
+We're dancing in the kitchen
+And I'm happy that you're here
+
+[Verse 2]
+Barefoot on the wooden floorboards
+Singing every melody
+We don't need a grand occasion
+Just a little company
+
+[Bridge]
+Turn it up and spin around
+Let the music shake the ground""", "112 BPM", "G major", "None", "Bright down-up strumming"),
+    PracticeSong("A Thousand Open Roads", "Acoustic folk rock", "Driving eighth-note strumming and chord endurance", "D – A – Bm – G", """[Verse 1]
+Packed my dreams inside a suitcase
+Left my worries at the door
+There are places I haven't seen yet
+There are songs I haven't sung before
+
+[Chorus]
+A thousand open roads
+A million stories left untold
+I'll take the long way home tonight
+And chase the fading golden light
+A thousand open roads
+And everywhere my spirit goes
+
+[Verse 2]
+Every stranger has a story
+Every town has something new
+I don't know where I'll be tomorrow
+But today I'll see it through
+
+[Bridge]
+No destination owns my soul
+The journey makes me whole""", "118 BPM", "D major", "None", "Driving eighth-note strumming"),
+    PracticeSong("Underneath the Same Moon", "Acoustic romantic ballad", "Fingerpicked verses and gentle chorus strumming", "Am – F – C – G", """[Verse 1]
+When the evening starts to settle
+And the stars begin to shine
+I imagine you are looking
+At the same old moon as mine
+
+[Chorus]
+Underneath the same moon
+Somewhere you're dreaming too
+Though the miles are stretching between us
+I still feel connected to you
+Underneath the same moon
+I'll keep a little light for you
+
+[Verse 2]
+Every night becomes a memory
+Every sunrise brings a day
+And although I cannot hold you
+There are things that distance can't take away
+
+[Bridge]
+Maybe someday we'll be standing
+Where the sky meets the sea""", "78 BPM", "C major (capo 3 shapes)", "3rd fret", "Fingerpicked verses; gentle strumming chorus"),
+    PracticeSong("Stronger Than the Storm", "Acoustic country rock", "Firm downstrokes and confident rhythmic pulse", "G – D – C – Em", """[Verse 1]
+The clouds came rolling through the valley
+And the thunder shook the trees
+I was standing in the darkness
+Wondering when I'd find some peace
+
+[Chorus]
+I'm stronger than the storm
+Still standing, still reborn
+The wind can try to break me
+But it won't decide my fate
+I'm stronger than the storm
+And I'll rise again
+
+[Verse 2]
+Every scar became a lesson
+Every fall became a climb
+I discovered my own courage
+One small step at a time
+
+[Bridge]
+Let the lightning fill the sky
+I have learned to stay alive""", "108 BPM", "G major", "None", "Strong, steady downstrokes"),
+    PracticeSong("Letters Never Sent", "Acoustic singer-songwriter", "Soft fingerpicking and expressive phrasing", "Am – G – F – E", """[Verse 1]
+I wrote your name on paper
+Then I folded it away
+There were things I couldn't tell you
+There were words I couldn't say
+
+[Chorus]
+These are letters never sent
+All the time and love we spent
+All the questions left unanswered
+All the moments that we meant
+Maybe words are not enough
+To explain the things we felt
+
+[Verse 2]
+Some memories become photographs
+Some disappear with time
+But the things we leave unspoken
+Still find a place inside
+
+[Bridge]
+I'll release what I can't change
+Let the silence turn the page""", "82 BPM", "A minor", "None", "Soft fingerpicking"),
+    PracticeSong("Summer Never Ends", "Acoustic pop rock", "Energetic strumming and consistent tempo", "G – D – A – D", """[Verse 1]
+Golden light across the ocean
+Barefoot running through the sand
+We were young enough for dreaming
+With the whole world in our hands
+
+[Chorus]
+Let the summer never end
+Let the sunlight find us again
+We'll keep laughing, we'll keep singing
+Hear the happiness we're bringing
+Even when the seasons change
+Summer lives inside our veins
+
+[Verse 2]
+Photographs and faded postcards
+Little moments we remember
+Every sunset tells a story
+That we carry through December
+
+[Bridge]
+Close your eyes and feel the breeze
+Keep that summer memory""", "120 BPM", "A major (capo 2 shapes)", "2nd fret", "Energetic pop-rock strumming"),
+    PracticeSong("Gravity of You", "Acoustic alternative pop", "Arpeggiated verses and full chorus strumming", "Em – C – G – D", """[Verse 1]
+I was floating through the silence
+Never knowing where to land
+Then you came into my orbit
+Like a universe unplanned
+
+[Chorus]
+It's the gravity of you
+Pulling me into the blue
+Every road becomes a circle
+Every star leads back to you
+I don't know what makes it true
+It's the gravity of you
+
+[Verse 2]
+There are things beyond explaining
+There are feelings without names
+Like the ocean knows the moonlight
+I keep turning just the same
+
+[Bridge]
+Maybe love is not a reason
+Maybe love is just a feeling""", "90 BPM", "F♯ minor (capo 2 shapes)", "2nd fret", "Arpeggiated verses; full chorus strumming"),
+    PracticeSong("The Man I Choose to Be", "Acoustic inspirational", "Steady four-beat strumming and vocal phrasing", "G – C – D – Em", """[Verse 1]
+I have made a few mistakes
+Taken roads I shouldn't take
+But the mirror shows a man
+Who can change and make a stand
+
+[Chorus]
+I'll be the man I choose to be
+With an open heart and honesty
+Not defined by where I've been
+But by the choices made within
+I'll keep learning, I'll keep growing
+With a better heart to show
+
+[Verse 2]
+I don't need to win each battle
+I don't need to prove I'm right
+I can choose to build tomorrow
+With a little more insight
+
+[Bridge]
+Every morning is a chance
+To rewrite the circumstance""", "92 BPM", "G major", "None", "Steady four-beat strumming"),
+    PracticeSong("Ocean Between Us", "Acoustic dream pop", "Delicate fingerpicking and sustained chord transitions", "D – A – Bm – G", """[Verse 1]
+The ocean keeps our secrets
+In the language of the tide
+I can hear your distant laughter
+In the waves that reach my side
+
+[Chorus]
+There's an ocean between us
+But the stars remain the same
+And the wind keeps on reminding
+Me of everything we became
+There's an ocean between us
+And a thousand things to say
+
+[Verse 2]
+Ships are crossing through the darkness
+Lights are fading in the blue
+I keep watching every horizon
+For a glimpse of something new
+
+[Bridge]
+If the waves could speak tonight
+They would tell us we'll be alright""", "76 BPM", "D major (capo 2 shapes)", "2nd fret", "Delicate fingerpicking"),
+    PracticeSong("Nothing but the Truth", "Acoustic blues", "Twelve-bar blues shuffle and dominant seventh chord", "E – A – B7", """[Verse 1]
+I've been walking down the highway
+With my troubles in a bag
+I've been smiling for the people
+While my heart was feeling bad
+
+[Chorus]
+Give me nothing but the truth
+No disguise and no excuse
+I would rather face the darkness
+Than be blinded by a lie
+Give me nothing but the truth
+Let me see it with my eyes
+
+[Verse 2]
+I've heard stories, I've heard promises
+I've seen fortunes come and go
+But the truth is worth much more
+Than the things that people show
+
+[Bridge]
+Let the hard words find their place
+Honesty can save the day""", "94 BPM", "E major", "None", "Blues shuffle"),
+    PracticeSong("Tomorrow Is a Song", "Acoustic folk pop", "Gentle verse dynamics and uplifting chorus strumming", "C – G – Am – F", """[Verse 1]
+When the night has taken over
+And the world has gone to sleep
+There are dreams that keep on calling
+There are promises to keep
+
+[Chorus]
+Tomorrow is a song
+And we've been singing all along
+Every sunrise brings a melody
+A brand-new possibility
+So let the old days fade away
+Tomorrow is another day
+
+[Verse 2]
+There are mountains left for climbing
+There are places left to see
+There are people left for loving
+There is more life left in me
+
+[Bridge]
+One more chord, one more beginning
+Every ending has a meaning
+
+[Final Chorus]
+Tomorrow is a song
+And we've been singing all along
+Every sunrise brings a melody
+A brand-new possibility
+So let the old days fade away
+Tomorrow is another day""", "100 BPM", "C major", "None", "Gentle verse; uplifting chorus strumming")
+
 )
 
 
@@ -1003,7 +1360,7 @@ private fun LyricsScreen(onBack: () -> Unit, onRecordingSaved: (File) -> Unit) {
             Text("ACOUSTIC PRACTICE SONGS", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
             TextButton(onClick = { showPracticeSongs = !showPracticeSongs }) { Text(if (showPracticeSongs) "Hide" else "Show") }
         }
-        Text("10 original songs with guitar chords and vocal exercises. Load one into the editor, then open Sing & Record.", color = Muted, fontSize = 11.sp)
+        Text("25 original songs with guitar chords and practice guidance. Load one into the editor, then open Sing & Record.", color = Muted, fontSize = 11.sp)
         if (showPracticeSongs) {
             acousticPracticeSongs.forEach { song ->
                 Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(14.dp)) {
@@ -1011,6 +1368,8 @@ private fun LyricsScreen(onBack: () -> Unit, onRecordingSaved: (File) -> Unit) {
                         Text(song.title, color = Ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                         Text(song.style + "  •  " + song.focus, color = Muted, fontSize = 10.sp)
                         Text("Guitar: " + song.chords, color = Teal, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                        if (song.tempo.isNotBlank()) Text("${song.tempo}  •  ${song.key}  •  Capo: ${song.capo}", color = Muted, fontSize = 10.sp)
+                        if (song.strumming.isNotBlank()) Text("Technique: " + song.strumming, color = Muted, fontSize = 10.sp)
                         OutlinedButton(onClick = {
                             title = song.title
                             lyrics = song.lyrics
