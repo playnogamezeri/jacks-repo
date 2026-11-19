@@ -1290,6 +1290,12 @@ private fun LyricsScreen(onBack: () -> Unit, onRecordingSaved: (File) -> Unit) {
     var status by remember { mutableStateOf("Your words stay saved on this phone.") }
     var showKaraoke by remember { mutableStateOf(false) }
     var showPracticeSongs by remember { mutableStateOf(true) }
+    var previewSong by remember { mutableStateOf<PracticeSong?>(null) }
+    if (previewSong != null) {
+        val song = previewSong!!
+        GuitarPracticePreview(title = song.title, style = song.style, chordsText = song.chords, tempoText = song.tempo, capo = song.capo, technique = song.strumming.ifBlank { song.focus }, lyrics = song.lyrics, onBack = { previewSong = null })
+        return
+    }
     if (showKaraoke) {
         KaraokeRecordingScreen(title = title, lyrics = lyrics, onBack = { showKaraoke = false }, onSaved = onRecordingSaved)
         return
@@ -1370,12 +1376,15 @@ private fun LyricsScreen(onBack: () -> Unit, onRecordingSaved: (File) -> Unit) {
                         Text("Guitar: " + song.chords, color = Teal, fontSize = 11.sp, fontWeight = FontWeight.Medium)
                         if (song.tempo.isNotBlank()) Text("${song.tempo}  •  ${song.key}  •  Capo: ${song.capo}", color = Muted, fontSize = 10.sp)
                         if (song.strumming.isNotBlank()) Text("Technique: " + song.strumming, color = Muted, fontSize = 10.sp)
-                        OutlinedButton(onClick = {
-                            title = song.title
-                            lyrics = song.lyrics
-                            selectedFile = null
-                            status = "Practice song loaded. Save it to keep an editable copy."
-                        }, modifier = Modifier.fillMaxWidth()) { Text("LOAD INTO LYRIC EDITOR") }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                            OutlinedButton(onClick = {
+                                title = song.title
+                                lyrics = song.lyrics
+                                selectedFile = null
+                                status = "Practice song loaded. Save it to keep an editable copy."
+                            }, modifier = Modifier.weight(1f)) { Text("LOAD LYRICS", fontSize = 10.sp) }
+                            Button(onClick = { previewSong = song }, modifier = Modifier.weight(1f)) { Text("GUITAR PREVIEW", fontSize = 10.sp) }
+                        }
                     }
                 }
             }
