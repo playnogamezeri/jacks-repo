@@ -20,9 +20,9 @@ android {
         applicationId 'com.jackgray.winamp'
         minSdk 23
         targetSdk 35
-        versionCode 29
-        versionName '2.2.2'
+        versionCode 30
+        versionName '2.2.3'
     }
 }
 
-// DJ Tune Jack 2.2.2 Jamendo Online Music Library.
+// DJ Tune Jack 2.2.3 Status Bar Spacing Fix.
