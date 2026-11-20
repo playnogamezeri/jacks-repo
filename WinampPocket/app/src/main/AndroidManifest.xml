@@ -7,7 +7,6 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application android:theme="@style/AppTheme" android:label="DJ Tune Jack" android:icon="@drawable/dj_tune_jack_icon" android:roundIcon="@drawable/dj_tune_jack_icon" android:allowBackup="false" android:supportsRtl="true">
         <service android:name=".PlaybackService" android:exported="false" android:foregroundServiceType="mediaPlayback" />
-        <activity android:name=".LibraryActivity" android:exported="false" />
         <activity android:name=".WaveEditorActivity" android:exported="false" />
         <activity android:name=".StudioActivity" android:exported="false" />
         <activity android:name=".MainActivity" android:exported="true">
