@@ -100,7 +100,6 @@ public class MainActivity extends Activity {
         topBar.setOrientation(LinearLayout.VERTICAL);
         LinearLayout menuHeader = new LinearLayout(this); menuHeader.setGravity(Gravity.LEFT|Gravity.CENTER_VERTICAL);
         addControl(menuHeader,"MENU ▼",()->toggleMenu());
-        addControl(menuHeader,"LIBRARY",()->openLibrary());
         topBar.addView(menuHeader,new LinearLayout.LayoutParams(-1,-2));
         TextView brand = text("JACK TUNES", 17, white, true); brand.setGravity(Gravity.CENTER); brand.setPadding(0,dp(5),0,dp(8));
         topBar.addView(brand,new LinearLayout.LayoutParams(-1,-2));
@@ -211,26 +210,6 @@ public class MainActivity extends Activity {
         startActivity(intent);
     }
 
-    private void openLibrary(){
-        Intent intent=new Intent(this,LibraryActivity.class);
-        startActivityForResult(intent,104);
-    }
-
-    private void addOnlineTrack(Intent data){
-        String url=data.getStringExtra("stream_url");
-        String title=data.getStringExtra("track_title");
-        String artist=data.getStringExtra("artist_name");
-        if(url==null||!url.startsWith("https://")){toast("Invalid online stream URL");return;}
-        Uri uri=Uri.parse(url);
-        for(Uri existing:tracks)if(existing.equals(uri)){toast("Track already in playlist");return;}
-        if(title==null||title.trim().isEmpty())title="Jamendo track";
-        if(artist==null||artist.trim().isEmpty())artist="Unknown artist";
-        tracks.add(uri);names.add((names.size()+1)+".  "+title+" — "+artist);
-        addedAt.add(System.currentTimeMillis());artists.add(artist);trackTitles.add(title);
-        adapter.notifyDataSetChanged();savePlaylist();playIndex(tracks.size()-1);
-        toast("Added online track to playlist");
-    }
-
     private void toggleMenu(){ if(menuPanel!=null) menuPanel.setVisibility(menuPanel.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE); }
 
     private void renamePlaylist(){
@@ -325,7 +304,7 @@ public class MainActivity extends Activity {
     }
 
     private void pickFiles(){Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.setType("audio/*");i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);i.addCategory(Intent.CATEGORY_OPENABLE);startActivityForResult(i,100);}
-    @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(result==RESULT_OK&&data!=null&&request==104){addOnlineTrack(data);return;}if(result==RESULT_OK&&data!=null&&request==101){writePlaylistFile(data.getData());return;}if(result==RESULT_OK&&data!=null&&request==102){readPlaylistFile(data.getData());return;}if(result==RESULT_OK&&data!=null&&request==103){copyCurrentTrack(data.getData());return;}if(request==100&&result==RESULT_OK&&data!=null){if(data.getClipData()!=null){for(int n=0;n<data.getClipData().getItemCount();n++)addUri(data.getClipData().getItemAt(n).getUri());}else if(data.getData()!=null)addUri(data.getData());adapter.notifyDataSetChanged();savePlaylist();if(current<0&&!tracks.isEmpty())playIndex(0);}}
+    @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(result==RESULT_OK&&data!=null&&request==101){writePlaylistFile(data.getData());return;}if(result==RESULT_OK&&data!=null&&request==102){readPlaylistFile(data.getData());return;}if(result==RESULT_OK&&data!=null&&request==103){copyCurrentTrack(data.getData());return;}if(request==100&&result==RESULT_OK&&data!=null){if(data.getClipData()!=null){for(int n=0;n<data.getClipData().getItemCount();n++)addUri(data.getClipData().getItemAt(n).getUri());}else if(data.getData()!=null)addUri(data.getData());adapter.notifyDataSetChanged();savePlaylist();if(current<0&&!tracks.isEmpty())playIndex(0);}}
     private void addUri(Uri u){
         if(u==null || isDuplicateTrack(u)) {
             if(u!=null) toast("Already in playlist");
