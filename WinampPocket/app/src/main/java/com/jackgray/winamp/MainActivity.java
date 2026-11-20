@@ -212,7 +212,7 @@ public class MainActivity extends Activity {
         }
         Intent intent=new Intent(this,LyricsActivity.class);
         intent.putExtra("track_uri",tracks.get(current).toString());
-        intent.putExtra("track_title",displayTrack(current).replaceFirst("^\\\\d+\\\\.  ",""));
+        intent.putExtra("track_title",displayTrack(current).replaceFirst("^\\d+\\.  ",""));
         startActivity(intent);
     }
 
