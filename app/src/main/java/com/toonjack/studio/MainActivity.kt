@@ -2056,6 +2056,8 @@ I'll be there eventually""", "82 BPM", "G major", "None", "Slow country strummin
 @Composable
 private fun LyricsScreen(onBack: () -> Unit, onRecordingSaved: (File) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val lyricBookScrollState = rememberScrollState()
+    val lyricBookScope = rememberCoroutineScope()
     val lyricsDir = remember { File(context.filesDir, "lyrics").apply { mkdirs() } }
     val drafts = remember {
         mutableStateListOf<File>().apply {
@@ -2115,7 +2117,7 @@ private fun LyricsScreen(onBack: () -> Unit, onRecordingSaved: (File) -> Unit) {
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp),
+        modifier = Modifier.fillMaxSize().verticalScroll(lyricBookScrollState).padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -2160,6 +2162,7 @@ private fun LyricsScreen(onBack: () -> Unit, onRecordingSaved: (File) -> Unit) {
                                 lyrics = song.lyrics
                                 selectedFile = null
                                 status = "Practice song loaded. Save it to keep an editable copy."
+                                lyricBookScope.launch { lyricBookScrollState.animateScrollTo(0) }
                             }, modifier = Modifier.weight(1f)) { Text("LOAD LYRICS", fontSize = 10.sp) }
                             Button(onClick = { previewSong = song }, modifier = Modifier.weight(1f)) { Text("GUITAR PREVIEW", fontSize = 10.sp) }
                         }
