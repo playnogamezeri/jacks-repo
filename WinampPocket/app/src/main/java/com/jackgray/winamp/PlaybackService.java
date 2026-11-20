@@ -7,7 +7,6 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.media.MediaPlayer;
 import android.media.MediaMetadata;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
@@ -23,7 +22,7 @@ public class PlaybackService extends Service {
     private static final String ACTION_NEXT = "com.jackgray.winamp.NEXT";
 
     private static PlaybackService instance;
-    private static MediaPlayer sharedPlayer;
+    private static PcmPlaybackEngine sharedPlayer;
     private static Uri currentUri;
     private static boolean prepared;
     private static String artist = "Unknown artist";
@@ -32,7 +31,7 @@ public class PlaybackService extends Service {
     private static Runnable nextCallback;
     private MediaSession mediaSession;
 
-    public static void attachPlayer(MediaPlayer player, Uri uri) {
+    public static void attachPlayer(PcmPlaybackEngine player, Uri uri) {
         sharedPlayer = player;
         currentUri = uri;
         prepared = false;
@@ -40,7 +39,7 @@ public class PlaybackService extends Service {
 
     public static void setPrepared(boolean value) { prepared = value; }
     public static boolean isPrepared() { return prepared; }
-    public static MediaPlayer getPlayer() { return sharedPlayer; }
+    public static PcmPlaybackEngine getPlayer() { return sharedPlayer; }
     public static Uri getCurrentUri() { return currentUri; }
 
     public static void setTrackInfo(String newArtist, String newTitle) {
@@ -60,17 +59,8 @@ public class PlaybackService extends Service {
         else context.startService(intent);
     }
 
-    public static boolean attachAuxEffect(int effectId) {
-        try {
-            if (sharedPlayer == null || !prepared) return false;
-            sharedPlayer.attachAuxEffect(effectId);
-            sharedPlayer.setAuxEffectSendLevel(1.0f);
-            return true;
-        } catch (Exception e) { return false; }
-    }
-
-    public static void detachAuxEffect() {
-        try { if (sharedPlayer != null) sharedPlayer.setAuxEffectSendLevel(0.0f); } catch (Exception ignored) {}
+    public static void configureSoftwareReverb(boolean enabled, double room, double decay, double wet, double predelay) {
+        if (sharedPlayer != null) sharedPlayer.setReverb(enabled, room, decay, wet, predelay);
     }
 
     public static void detachPlayer() {
