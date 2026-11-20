@@ -133,6 +133,7 @@ public class MainActivity extends Activity {
         addControl(controls,"▶",()->playOrResume()); addControl(controls,"Ⅱ",()->pause()); addControl(controls,"■",()->stop()); addControl(controls,"▶|",()->next());
         main.addView(controls);
         LinearLayout modes = new LinearLayout(this); modes.setGravity(Gravity.CENTER); addControl(modes,"SHUFFLE",()->{shuffle=!shuffle; toast("Shuffle "+(shuffle?"ON":"OFF"));}); addControl(modes,"REPEAT",()->{repeat=!repeat; toast("Repeat "+(repeat?"ON":"OFF"));});
+        addControl(modes,"LYRICS",()->openLyrics());
         main.addView(modes);
         LinearLayout volRow = new LinearLayout(this); volRow.setGravity(Gravity.CENTER_VERTICAL); volRow.setPadding(dp(8),dp(2),dp(8),dp(2));
         TextView volLabel = text("VOL",10,muted,true); volRow.addView(volLabel);
@@ -203,6 +204,17 @@ public class MainActivity extends Activity {
     private int dp(float n){return (int)(n*getResources().getDisplayMetrics().density+0.5f);}
     private Button addControl(LinearLayout row,String label,Runnable action){Button b=new Button(this);b.setText(label);b.setTextSize(10);b.setTextColor(white);b.setAllCaps(false);b.setPadding(dp(5),0,dp(5),0);b.setMinWidth(0);b.setMinimumWidth(dp(42));b.setMinHeight(dp(38));b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.rgb(8,55,72)));b.setOnClickListener(v->action.run());LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,dp(40));lp.setMargins(dp(2),dp(2),dp(2),dp(2));row.addView(b,lp);return b;}
 
+
+    private void openLyrics(){
+        if(current<0 || current>=tracks.size()){
+            toast("Select a track first to open its lyrics");
+            return;
+        }
+        Intent intent=new Intent(this,LyricsActivity.class);
+        intent.putExtra("track_uri",tracks.get(current).toString());
+        intent.putExtra("track_title",displayTrack(current).replaceFirst("^\\\\d+\\\\.  ",""));
+        startActivity(intent);
+    }
 
     private void openStudio(){
         Intent intent=new Intent(this,StudioActivity.class);
