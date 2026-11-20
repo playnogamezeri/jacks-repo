@@ -8,7 +8,6 @@ import android.database.Cursor;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.media.AudioManager;
-import android.media.MediaPlayer;
 import android.media.MediaMetadataRetriever;
 import android.media.audiofx.Equalizer;
 import android.net.Uri;
@@ -48,7 +47,7 @@ public class MainActivity extends Activity {
     private LinearLayout menuPanel;
     private TextView playlistHeading;
     private String playlistName = "MY MUSIC LIST";
-    private MediaPlayer player;
+    private PcmPlaybackEngine player;
     private Equalizer equalizer;
     private int current = -1;
     private boolean prepared = false, seeking = false, shuffle = false, repeat = false;
@@ -440,7 +439,7 @@ public class MainActivity extends Activity {
     }
     private String displayTrack(int i){return (i+1)+".  "+(artists.get(i).equals("Unknown artist")?trackTitles.get(i):artists.get(i)+" - "+trackTitles.get(i));}
 
-    private void playIndex(int index){if(index<0||index>=tracks.size())return;releasePlayer();current=index;prepared=false;adapter.notifyDataSetChanged();trackTitle.setText(displayTrack(index).replaceFirst("^\\d+\\.  ",""));status.setText("LOADING AUDIO...");PlaybackService.setTrackInfo(artists.get(index),trackTitles.get(index));player=new MediaPlayer(); player.setWakeMode(this,PowerManager.PARTIAL_WAKE_LOCK); PlaybackService.attachPlayer(player,tracks.get(index)); PlaybackService.startService(this); try{player.setDataSource(this,tracks.get(index));player.setOnPreparedListener(mp->{prepared=true;PlaybackService.setPrepared(true);mp.start();PlaybackService.setTrackInfo(artists.get(current),trackTitles.get(current));PlaybackService.refreshNotification();duration.setText(time(mp.getDuration()));status.setText("PLAYING     STEREO");initEqualizer(mp.getAudioSessionId());});player.setOnCompletionListener(mp->{if(repeat)playIndex(current);else next();});player.setOnErrorListener((mp,what,extra)->{toast("Unable to play this audio file");status.setText("PLAYBACK ERROR");return true;});player.prepareAsync();}catch(IOException e){toast("Could not open audio file");}}
+    private void playIndex(int index){if(index<0||index>=tracks.size())return;releasePlayer();current=index;prepared=false;adapter.notifyDataSetChanged();trackTitle.setText(displayTrack(index).replaceFirst("^\\d+\\.  ",""));status.setText("LOADING AUDIO...");PlaybackService.setTrackInfo(artists.get(index),trackTitles.get(index));player=new PcmPlaybackEngine(this); PlaybackService.attachPlayer(player,tracks.get(index)); PlaybackService.startService(this); try{player.setDataSource(this,tracks.get(index));player.setOnPreparedListener(mp->{prepared=true;PlaybackService.setPrepared(true);mp.start();PlaybackService.setTrackInfo(artists.get(current),trackTitles.get(current));PlaybackService.refreshNotification();duration.setText(time(mp.getDuration()));status.setText("PLAYING     STEREO");initEqualizer(mp.getAudioSessionId());});player.setOnCompletionListener(mp->{if(repeat)playIndex(current);else next();});player.setOnErrorListener((mp,error)->{toast("Unable to play this audio file: "+error.getMessage());status.setText("PLAYBACK ERROR");return true;});player.prepareAsync();}catch(Exception e){toast("Could not open audio file: "+e.getMessage());}}
     private void initEqualizer(int session){
         try {
             if(equalizer!=null) equalizer.release();
