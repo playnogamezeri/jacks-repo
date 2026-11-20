@@ -272,7 +272,8 @@ public final class PcmPlaybackEngine {
         }
         int offset = 0;
         while (offset < pcm.length && !released) {
-            waitWhilePaused();
+            try { waitWhilePaused(); }
+            catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new IOException("Playback interrupted", e); }
             if (released) return;
             int n = track.write(pcm, offset, pcm.length - offset);
             if (n < 0) throw new IOException("Audio output write failed: " + n);
