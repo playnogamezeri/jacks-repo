@@ -12,6 +12,7 @@ public final class SoftwareReverbProcessor {
     private final int channels;
     private final Delay[] combL, combR, allpassL, allpassR;
     private final Delay preL, preR;
+    private final boolean preDelayEnabled;
     private final double wet, dry, feedback, damping;
     private double dampL, dampR;
 
@@ -43,6 +44,7 @@ public final class SoftwareReverbProcessor {
             allpassR[i] = new Delay(Math.max(1, base + 11 + (int)(room * 9)));
         }
         int pre = Math.max(0, Math.min(sampleRate / 2, (int)(sampleRate * clamp(preDelayMs, 0, 250) / 1000.0)));
+        preDelayEnabled = pre > 0;
         preL = new Delay(Math.max(1, pre));
         preR = new Delay(Math.max(1, pre));
     }
@@ -54,8 +56,8 @@ public final class SoftwareReverbProcessor {
         for (int p = 0; p < end; p += frameBytes) {
             double left = read16(pcm, p) / 32768.0;
             double right = channels == 2 ? read16(pcm, p + 2) / 32768.0 : left;
-            double inL = preL.push(left);
-            double inR = preR.push(right);
+            double inL = preDelayEnabled ? preL.pushAndRead(left) : left;
+            double inR = preDelayEnabled ? preR.pushAndRead(right) : right;
             double revL = 0, revR = 0;
             for (int i = 0; i < combL.length; i++) {
                 double a = combL[i].peek();
@@ -102,5 +104,11 @@ public final class SoftwareReverbProcessor {
         Delay(int size) { data = new double[Math.max(1, size)]; }
         double peek() { return data[index]; }
         void push(double value) { data[index] = value; if (++index == data.length) index = 0; }
+        double pushAndRead(double value) {
+            double delayed = data[index];
+            data[index] = value;
+            if (++index == data.length) index = 0;
+            return delayed;
+        }
     }
 }
