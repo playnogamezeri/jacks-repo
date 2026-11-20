@@ -44,7 +44,15 @@ public final class PcmPlaybackEngine {
     private int sampleRate = 44100, channels = 2;
     private SoftwareReverbProcessor reverb;
 
-    public PcmPlaybackEngine(Context context) { this.context = context.getApplicationContext(); }
+    public PcmPlaybackEngine(Context context) {
+        this.context = context.getApplicationContext();
+        android.content.SharedPreferences p = this.context.getSharedPreferences("jack_audio_fx", Context.MODE_PRIVATE);
+        reverbEnabled = p.getBoolean("software_reverb_enabled", false);
+        roomSize = p.getFloat("reverb_room", 0.65f);
+        decaySeconds = p.getFloat("reverb_decay", 2.8f);
+        wetPercent = p.getFloat("reverb_wet", 28f);
+        preDelayMs = p.getFloat("reverb_predelay", 18f);
+    }
     public void setDataSource(Context ignored, Uri uri) { source = uri; }
     public void setOnPreparedListener(PreparedListener l) { preparedListener = l; }
     public void setOnCompletionListener(CompletionListener l) { completionListener = l; }
