@@ -1272,7 +1272,785 @@ A brand-new possibility
 So let the old days fade away
 Tomorrow is another day""", "100 BPM", "C major", "None", "Gentle verse; uplifting chorus strumming")
 
-)
+
+) + listOf(
+    PracticeSong("Small Town Satellites", "Acoustic folk-pop", "Steady rhythm and warm storytelling", "G – D – Em – C", """[Verse 1]
+The streetlights blink above the corner store
+The same old bus rolls past my door
+The neighbors wave, the evening settles in
+And every quiet road feels like a friend
+
+[Pre-Chorus]
+I used to dream of getting far away
+Now I see the beauty where I stay
+
+[Chorus]
+We're small-town satellites, turning through the night
+Holding little pieces of a bigger kind of light
+Every porch and every window has a story of its own
+And wherever I may wander, there's a road that leads me home
+
+[Verse 2]
+The football field is empty after rain
+The diner knows the sound of every name
+A radio is playing something old
+And summer hangs around the telephone poles
+
+[Bridge]
+Maybe growing up means finally seeing
+That ordinary days can have a meaning
+
+[Final Chorus]
+We're small-town satellites, turning through the night
+Holding little pieces of a bigger kind of light
+Every porch and every window has a story of its own
+And wherever I may wander, there's a road that leads me home""", "92 BPM", "G major", "None", "Even down-up strumming"),
+    PracticeSong("Blue Bicycle", "Bright acoustic pop", "Light bounce and clear consonants", "C – G – Am – F", """[Verse 1]
+A blue bicycle leaning by the gate
+Two paper cups and somewhere we are late
+The afternoon is spilling down the street
+And every passing sound becomes a beat
+
+[Pre-Chorus]
+We don't need a reason or a plan
+Just the open road and open hands
+
+[Chorus]
+Ride with me beneath the summer sky
+Let the little worries roll on by
+Round the corner, past the old arcade
+We'll keep every promise that we made
+No destination, nothing left to prove
+Just a blue bicycle and room to move
+
+[Verse 2]
+The market closes, music fills the square
+A little wind is playing with your hair
+We stop to watch the clouds become a sea
+And laugh about how good it feels to be
+
+[Bridge]
+When the years have changed this avenue
+I'll still hear these wheels beside you
+
+[Final Chorus]
+Ride with me beneath the summer sky
+Let the little worries roll on by
+Round the corner, past the old arcade
+We'll keep every promise that we made
+No destination, nothing left to prove
+Just a blue bicycle and room to move""", "106 BPM", "C major", "None", "Bright down-up pop strum"),
+    PracticeSong("Borrowed Starlight", "Fingerpicked acoustic ballad", "Soft picking and sustained vocal notes", "Em – C – G – D", """[Verse 1]
+We borrowed starlight from the midnight sky
+And made a little heaven passing by
+The city slept beneath a silver haze
+While we forgot the names of all the days
+
+[Pre-Chorus]
+Nothing in this world is ours to keep
+Still some moments settle in too deep
+
+[Chorus]
+If the stars are only borrowed light
+Let them shine upon us for tonight
+We can hold the silence while it stays
+And let it find its own way through the days
+When the morning takes the dark away
+I'll remember how we burned like day
+
+[Verse 2]
+Your jacket on my shoulders in the cold
+A thousand little things I never told
+The distant trains were singing through the rain
+And I was glad to hear them once again
+
+[Bridge]
+We don't have to stop the turning
+We can be the light we're learning
+
+[Final Chorus]
+If the stars are only borrowed light
+Let them shine upon us for tonight
+We can hold the silence while it stays
+And let it find its own way through the days
+When the morning takes the dark away
+I'll remember how we burned like day""", "76 BPM", "E minor", "None", "Fingerpicked arpeggios"),
+    PracticeSong("Sunday on the Balcony", "Relaxed acoustic indie", "Laid-back timing and gentle phrasing", "D – A – G – D", """[Verse 1]
+The coffee maker hums a lazy tune
+The laundry dances underneath the moon
+The week is folded neatly on a chair
+And for a little while there's time to spare
+
+[Pre-Chorus]
+No headlines calling out my name
+No need to hurry through the day
+
+[Chorus]
+It's Sunday on the balcony
+A little peace is all I need
+The city moves a world below
+But up here we can take it slow
+Let the afternoon unfold
+Like a story softly told
+It's Sunday on the balcony
+And that's enough for me
+
+[Verse 2]
+A neighbor waters flowers in the heat
+A distant dog is barking down the street
+We talk about the places we could go
+Then watch the clouds and let the minutes flow
+
+[Bridge]
+Maybe joy is not a distant place
+Maybe it's a chair and someone's face
+
+[Final Chorus]
+It's Sunday on the balcony
+A little peace is all I need
+The city moves a world below
+But up here we can take it slow
+Let the afternoon unfold
+Like a story softly told
+It's Sunday on the balcony
+And that's enough for me""", "84 BPM", "D major", "None", "Soft relaxed strumming"),
+    PracticeSong("After the Applause", "Acoustic singer-songwriter", "Dynamic control and reflective delivery", "Am – C – G – D", """[Verse 1]
+The room is empty, chairs are stacked
+The final song has faded back
+The lights are bright but no one stays
+The echoes gather in the space
+
+[Pre-Chorus]
+I used to think the noise was everything
+Now I hear the quiet underneath
+
+[Chorus]
+Who am I after the applause?
+When the curtain falls and nobody calls
+When the shining lights have disappeared
+And the only voice I have to hear is here
+I'll find the truth beneath it all
+I'm still myself after the applause
+
+[Verse 2]
+The mirror shows a tired face
+A little doubt I can't erase
+But every note that I let go
+Was something honest I should know
+
+[Bridge]
+I don't need a crowd to make it real
+The song begins with what I feel
+
+[Final Chorus]
+Who am I after the applause?
+When the curtain falls and nobody calls
+When the shining lights have disappeared
+And the only voice I have to hear is here
+I'll find the truth beneath it all
+I'm still myself after the applause""", "80 BPM", "A minor", "None", "Fingerpicked verses, open chorus strum"),
+    PracticeSong("Wild Blue Morning", "Acoustic country-folk", "Country pulse and relaxed storytelling", "G – C – D – G", """[Verse 1]
+The screen door sings against the frame
+The kettle whistles just the same
+A dusty truck is waiting in the drive
+The hills are turning green and coming alive
+
+[Pre-Chorus]
+I can feel the day begin
+Like a song beneath my skin
+
+[Chorus]
+It's a wild blue morning, wide open and clear
+With a road full of chances and the whole world near
+I'll take what I'm given, I'll give what I can
+With the sun on my shoulders and my feet on the land
+It's a wild blue morning, calling me away
+And I think I'll be alright today
+
+[Verse 2]
+The old dog follows halfway down the lane
+The clouds are making pictures after rain
+I wave to someone working in the field
+And feel a kind of gratitude I cannot name
+
+[Bridge]
+Let the wind decide the weather
+We'll keep moving on together
+
+[Final Chorus]
+It's a wild blue morning, wide open and clear
+With a road full of chances and the whole world near
+I'll take what I'm given, I'll give what I can
+With the sun on my shoulders and my feet on the land
+It's a wild blue morning, calling me away
+And I think I'll be alright today""", "98 BPM", "G major", "None", "Country boom-chuck"),
+    PracticeSong("Room for One More", "Upbeat acoustic folk-pop", "Group-sing chorus and steady strumming", "G – D – C – C", """[Verse 1]
+There's a table by the kitchen wall
+A little crowded but it fits us all
+Someone brings a story, someone brings a song
+And nobody minds if the night runs long
+
+[Pre-Chorus]
+Pull another chair up to the light
+There's always room for one tonight
+
+[Chorus]
+There's room for one more at the table
+Room for one more if you're able
+Bring your worries, bring your dreams
+Nothing here is what it seems
+We'll make a place and pass it on
+Keep the welcome light turned on
+There's room for one more at the table
+Come on in, you're welcome
+
+[Verse 2]
+The soup is warm, the windows glow
+The old guitar is playing soft and low
+We don't agree on every little thing
+But every voice has something it can bring
+
+[Bridge]
+A little kindness travels far
+A little welcome makes a home
+
+[Final Chorus]
+There's room for one more at the table
+Room for one more if you're able
+Bring your worries, bring your dreams
+Nothing here is what it seems
+We'll make a place and pass it on
+Keep the welcome light turned on
+There's room for one more at the table
+Come on in, you're welcome""", "110 BPM", "G major", "None", "Steady folk strumming"),
+    PracticeSong("The Shape of Quiet", "Minimal acoustic ballad", "Breath control and soft dynamics", "Am – G – F – C", """[Verse 1]
+The clock is drawing circles on the wall
+The hallway holds the shadows as they fall
+I hear the little sounds I missed all day
+The house has found a softer way to say
+
+[Pre-Chorus]
+Slow down, let the noise release
+There's a language underneath the peace
+
+[Chorus]
+This is the shape of quiet
+A little room where I can hide it
+All the words I couldn't carry
+All the days that felt too heavy
+I can lay them down tonight
+In the gentle shape of quiet
+
+[Verse 2]
+The curtains move as evening enters in
+The long day loosens underneath my skin
+I don't need to solve the world before I sleep
+Some promises are mine alone to keep
+
+[Bridge]
+One breath, then another
+Let the silence be a cover
+
+[Final Chorus]
+This is the shape of quiet
+A little room where I can hide it
+All the words I couldn't carry
+All the days that felt too heavy
+I can lay them down tonight
+In the gentle shape of quiet""", "70 BPM", "A minor", "None", "Slow fingerpicked pattern"),
+    PracticeSong("Postcards from the Coast", "Acoustic pop-folk", "Clear rhythm and melodic storytelling", "D – G – Bm – A", """[Verse 1]
+I found your postcard in a drawer
+A faded picture of the shore
+The ink had blurred around the lines
+But I could read between the signs
+
+[Pre-Chorus]
+Somewhere waves are rolling in
+Somewhere new days can begin
+
+[Chorus]
+Send me postcards from the coast
+Tell me what you miss the most
+Tell me how the sunlight falls
+On the old familiar walls
+Even if we're far apart
+There's a shoreline in the heart
+Send me postcards from the coast
+I'll be listening for your notes
+
+[Verse 2]
+The little town has changed its name
+The harbor lights are not the same
+But every evening, when it's blue
+I think of that horizon too
+
+[Bridge]
+Distance is a winding road
+Not the end of what we know
+
+[Final Chorus]
+Send me postcards from the coast
+Tell me what you miss the most
+Tell me how the sunlight falls
+On the old familiar walls
+Even if we're far apart
+There's a shoreline in the heart
+Send me postcards from the coast
+I'll be listening for your notes""", "94 BPM", "D major", "None", "Steady eighth-note strum"),
+    PracticeSong("Better Than Yesterday", "Inspirational acoustic pop", "Confident chorus and even pulse", "C – G – F – Am", """[Verse 1]
+I don't need to win the morning
+I don't need to race the sun
+I can start with one small promise
+And be proud when it is done
+
+[Pre-Chorus]
+Every step can count for something
+Every try can make a change
+
+[Chorus]
+I'll be better than yesterday
+Not by miles, just a little way
+With a kinder word and a clearer view
+With a little more of what is true
+I can learn and I can find my way
+I'll be better than yesterday
+
+[Verse 2]
+There are habits I am changing
+There are things I still don't know
+But the future isn't waiting
+For a perfect heart to grow
+
+[Bridge]
+If I stumble, I'll begin again
+Small beginnings still can lead somewhere
+
+[Final Chorus]
+I'll be better than yesterday
+Not by miles, just a little way
+With a kinder word and a clearer view
+With a little more of what is true
+I can learn and I can find my way
+I'll be better than yesterday""", "100 BPM", "C major", "None", "Simple down-up strumming"),
+    PracticeSong("Lanterns in the Park", "Acoustic romantic folk", "Gentle waltz-like phrasing", "G – Em – C – D", """[Verse 1]
+The park is closing for the night
+The trees are holding little lights
+A paper lantern drifts above
+And every path feels full of love
+
+[Pre-Chorus]
+We walk slowly, side by side
+With nowhere that we need to hide
+
+[Chorus]
+Lanterns in the park tonight
+Floating softly into light
+If the world is moving fast
+Let this little moment last
+Hand in hand beneath the trees
+Let the evening carry me
+Lanterns in the park tonight
+Make the ordinary bright
+
+[Verse 2]
+The fountain keeps a quiet time
+Your footsteps fall in step with mine
+A distant train begins to sing
+And night becomes a gentle thing
+
+[Bridge]
+When the lanterns disappear
+I'll keep the warmth of having you near
+
+[Final Chorus]
+Lanterns in the park tonight
+Floating softly into light
+If the world is moving fast
+Let this little moment last
+Hand in hand beneath the trees
+Let the evening carry me
+Lanterns in the park tonight
+Make the ordinary bright""", "88 BPM", "G major", "None", "Gentle swaying strum"),
+    PracticeSong("No Map for This", "Acoustic alternative", "Syncopated strumming and expressive phrasing", "Em – G – D – A", """[Verse 1]
+I drew a line across the page
+Then watched it change from age to age
+The plans I made were turning blue
+The road was never straight or true
+
+[Pre-Chorus]
+Maybe I can let it bend
+Maybe I can start again
+
+[Chorus]
+There's no map for this
+No sign I shouldn't miss
+Just a little faith beneath my shoes
+And a thousand ways to choose
+I don't know what comes next
+But I can take the step
+There's no map for this
+And that's the part I won't resist
+
+[Verse 2]
+The compass spins, the weather turns
+The heart keeps teaching what it learns
+I used to fear the open space
+Now I can meet it face to face
+
+[Bridge]
+I can make a road by walking
+I can find a voice by talking
+
+[Final Chorus]
+There's no map for this
+No sign I shouldn't miss
+Just a little faith beneath my shoes
+And a thousand ways to choose
+I don't know what comes next
+But I can take the step
+There's no map for this
+And that's the part I won't resist""", "102 BPM", "E minor", "None", "Light syncopated strumming"),
+    PracticeSong("When the House Is Sleeping", "Intimate acoustic lullaby", "Soft fingerpicking and gentle sustained notes", "C – Am – Dm – G", """[Verse 1]
+When the house is sleeping
+And the floorboards settle down
+I can hear the night wind
+Moving softly through the town
+The lamps are growing dimmer
+And the day has let us go
+There are things I want to tell you
+But I'll say them soft and slow
+
+[Chorus]
+Rest your eyes, the night is kind
+Leave the heavy day behind
+Every star is keeping watch
+Every dream can take its time
+When the house is sleeping
+You are safe inside this light
+
+[Verse 2]
+Tomorrow has its questions
+Tomorrow has its miles
+But tonight we have the quiet
+And the comfort of a smile
+Let the curtains hold the moonlight
+Let the silence find its place
+There is nothing we must answer
+There is time enough for grace
+
+[Bridge]
+Breathe in slow, breathe out
+Let the world turn without doubt
+
+[Final Chorus]
+Rest your eyes, the night is kind
+Leave the heavy day behind
+Every star is keeping watch
+Every dream can take its time
+When the house is sleeping
+You are safe inside this light""", "68 BPM", "C major", "None", "Slow fingerpicked arpeggios"),
+    PracticeSong("Fire Escape Summer", "Acoustic indie-rock", "Driving rhythm and strong chorus projection", "A – D – F#m – E", """[Verse 1]
+We climbed the fire escape at ten
+To watch the city breathe again
+The rooftops held the fading heat
+The radio came up the street
+
+[Pre-Chorus]
+We were young enough to try
+To touch the edges of the sky
+
+[Chorus]
+This is our fire escape summer
+Running wild from one day to another
+Singing loud where the night winds blow
+With nowhere special we have to go
+If the years come changing everything
+We'll remember how the rooftops sing
+This is our fire escape summer
+Burning bright beneath the stars
+
+[Verse 2]
+The corner shop was closing down
+We shared a soda, walked through town
+The sky turned violet over cars
+And every window caught the stars
+
+[Bridge]
+We can't keep the season still
+But we can keep the way it feels
+
+[Final Chorus]
+This is our fire escape summer
+Running wild from one day to another
+Singing loud where the night winds blow
+With nowhere special we have to go
+If the years come changing everything
+We'll remember how the rooftops sing
+This is our fire escape summer
+Burning bright beneath the stars""", "116 BPM", "A major", "None", "Driving eighth-note strum"),
+    PracticeSong("A Place to Begin", "Acoustic inspirational ballad", "Long vocal lines and gentle crescendo", "D – A – G – Bm", """[Verse 1]
+The page is blank, the room is still
+The morning waits beyond the sill
+I thought I needed all the words
+But one small line is what I've heard
+
+[Pre-Chorus]
+I don't need to see the end
+I only need a place to begin
+
+[Chorus]
+Give me a place to begin
+A little light to let me in
+One honest step, one open door
+A chance to try a little more
+I may not know where this will lead
+But I can plant a hopeful seed
+Give me a place to begin
+And I'll begin again
+
+[Verse 2]
+The past can keep its photographs
+The future has its own new path
+I'll take the lessons, leave the blame
+And meet tomorrow all the same
+
+[Bridge]
+Every song begins with sound
+Every journey starts from ground
+
+[Final Chorus]
+Give me a place to begin
+A little light to let me in
+One honest step, one open door
+A chance to try a little more
+I may not know where this will lead
+But I can plant a hopeful seed
+Give me a place to begin
+And I'll begin again""", "78 BPM", "D major", "None", "Gentle verse picking; full chorus strum"),
+    PracticeSong("Honey in the Melody", "Warm acoustic pop", "Smooth melodic phrasing and relaxed groove", "C – F – G – Am", """[Verse 1]
+There's honey in the melody
+A little sweetness following me
+The radio is playing low
+And all the little worries go
+
+[Pre-Chorus]
+You hum the line, I find the key
+And suddenly the room feels free
+
+[Chorus]
+Put a little honey in the melody
+Let it roll like summer through the trees
+Every note can turn the day around
+Every heart can find a softer sound
+Sing it once and sing it back to me
+Put a little honey in the melody
+
+[Verse 2]
+The afternoon is golden brown
+The sunlight spills across the town
+We miss a word and laugh again
+Then find the chorus at the end
+
+[Bridge]
+It doesn't have to be perfect
+It only has to feel like us
+
+[Final Chorus]
+Put a little honey in the melody
+Let it roll like summer through the trees
+Every note can turn the day around
+Every heart can find a softer sound
+Sing it once and sing it back to me
+Put a little honey in the melody""", "96 BPM", "C major", "None", "Warm relaxed strumming"),
+    PracticeSong("The Long Way Around", "Acoustic country-folk", "Alternating bass and chord changes", "D – G – D – A", """[Verse 1]
+The highway had a faster lane
+But I took the road beside the grain
+It passed the fields and willow trees
+And brought a little quiet back to me
+
+[Pre-Chorus]
+I have learned along the way
+The shortest road won't always stay
+
+[Chorus]
+I'll take the long way around
+Where the old familiar roads are found
+Where the river bends and the fields turn gold
+Where the stories of the town are told
+I don't mind if I arrive late
+Some things are worth the time they take
+I'll take the long way around
+And let the miles slow me down
+
+[Verse 2]
+A farmer waved beside the fence
+A dog ran out without pretense
+The clouds were moving like a train
+And I was glad I missed the faster lane
+
+[Bridge]
+Maybe getting lost is how
+We find what matters to us now
+
+[Final Chorus]
+I'll take the long way around
+Where the old familiar roads are found
+Where the river bends and the fields turn gold
+Where the stories of the town are told
+I don't mind if I arrive late
+Some things are worth the time they take
+I'll take the long way around
+And let the miles slow me down""", "90 BPM", "D major", "None", "Alternating bass with gentle strum"),
+    PracticeSong("Everything in Its Time", "Acoustic reflective pop", "Controlled dynamics and patient phrasing", "Em – C – G – D", """[Verse 1]
+The seed does not become a tree
+By wishing it could grow by three
+The river doesn't race the shore
+It finds a way and asks for more
+
+[Pre-Chorus]
+I can let the seasons turn
+There is still so much to learn
+
+[Chorus]
+Everything in its time
+Every road, every sign
+I don't have to force the day
+I can grow along the way
+Let the sunlight find the vine
+Everything in its time
+
+[Verse 2]
+Some doors open, some doors close
+Some answers take the longest road
+I used to measure every mile
+Now I can stop and stay awhile
+
+[Bridge]
+I am not behind the sun
+My own becoming has begun
+
+[Final Chorus]
+Everything in its time
+Every road, every sign
+I don't have to force the day
+I can grow along the way
+Let the sunlight find the vine
+Everything in its time""", "74 BPM", "E minor", "None", "Gentle four-beat strumming"),
+    PracticeSong("Sing It to the Sea", "Acoustic folk anthem", "Open-vowel chorus and steady strumming", "G – D – C – Em", """[Verse 1]
+I brought a song down to the water
+With a voice that shook a little
+The waves were rolling in like thunder
+And the wind became the fiddle
+
+[Pre-Chorus]
+I don't need a perfect tune
+I can let it find the blue
+
+[Chorus]
+I'll sing it to the sea
+Let the waves sing back to me
+Every fear and every dream
+Can be carried by the breeze
+If the world won't hear my song
+The wide horizon will sing along
+I'll sing it to the sea
+And let the water set me free
+
+[Verse 2]
+The gulls were drawing lines above me
+The tide was turning silver
+I sang about the roads behind me
+And the hope that makes me shiver
+
+[Bridge]
+A voice is more than being heard
+A song can live without a word
+
+[Final Chorus]
+I'll sing it to the sea
+Let the waves sing back to me
+Every fear and every dream
+Can be carried by the breeze
+If the world won't hear my song
+The wide horizon will sing along
+I'll sing it to the sea
+And let the water set me free""", "104 BPM", "G major", "None", "Open acoustic strumming"),
+    PracticeSong("One More Ordinary Day", "Acoustic singer-songwriter", "Natural vocal tone and consistent rhythm", "C – G – F – G", """[Verse 1]
+The kettle clicks, the curtains move
+The morning finds its familiar groove
+A message waits beside the phone
+A little reminder I'm not alone
+
+[Pre-Chorus]
+Nothing shining, nothing new
+Still the day is coming through
+
+[Chorus]
+Give me one more ordinary day
+A little time to work and play
+A familiar voice, a window view
+A chance to do one thing that's true
+I don't need the world to rearrange
+To find a reason I can stay
+Give me one more ordinary day
+
+[Verse 2]
+The bus arrives, the traffic crawls
+The evening light climbs up the walls
+I make a meal, I wash a plate
+And let the quiet come in late
+
+[Bridge]
+When I look back years from now
+These little days will show me how
+
+[Final Chorus]
+Give me one more ordinary day
+A little time to work and play
+A familiar voice, a window view
+A chance to do one thing that's true
+I don't need the world to rearrange
+To find a reason I can stay
+Give me one more ordinary day""", "86 BPM", "C major", "None", "Simple down-up strumming"),
+    PracticeSong("Keep the Porch Light On", "Acoustic country ballad", "Warm low register and sustained chorus", "G – Em – C – D", """[Verse 1]
+The evening train is rolling through
+The sky is turning navy blue
+I left a note beside the phone
+To say you never walk alone
+
+[Pre-Chorus]
+Wherever all these roads may bend
+There's always somewhere to return again
+
+[Chorus]
+Keep the porch light on for me
+Like a lighthouse by the trees
+When the road is dark and long
+I'll remember where I belong
+No matter how far I roam
+That little light will lead me home
+Keep the porch light on for me
+I'll be there eventually
+
+[Verse 2]
+The old steps creak beneath the rain
+The garden grows along the lane
+I know the years have changed the view
+But every window still feels true
+
+[Bridge]
+Home is not a perfect place
+It's the light that knows your face
+
+[Final Chorus]
+Keep the porch light on for me
+Like a lighthouse by the trees
+When the road is dark and long
+I'll remember where I belong
+No matter how far I roam
+That little light will lead me home
+Keep the porch light on for me
+I'll be there eventually""", "82 BPM", "G major", "None", "Slow country strumming")
 
 
 @Composable
@@ -1366,7 +2144,7 @@ private fun LyricsScreen(onBack: () -> Unit, onRecordingSaved: (File) -> Unit) {
             Text("ACOUSTIC PRACTICE SONGS", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
             TextButton(onClick = { showPracticeSongs = !showPracticeSongs }) { Text(if (showPracticeSongs) "Hide" else "Show") }
         }
-        Text("25 original songs with guitar chords and practice guidance. Load one into the editor, then open Sing & Record.", color = Muted, fontSize = 11.sp)
+        Text("${acousticPracticeSongs.size} original songs with guitar chords and practice guidance. Load one into the editor, then open Sing & Record.", color = Muted, fontSize = 11.sp)
         if (showPracticeSongs) {
             acousticPracticeSongs.forEach { song ->
                 Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(14.dp)) {
