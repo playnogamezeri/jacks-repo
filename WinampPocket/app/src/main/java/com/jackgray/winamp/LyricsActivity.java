@@ -2,6 +2,7 @@ package com.jackgray.winamp;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.net.Uri;
@@ -17,6 +18,11 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -26,6 +32,7 @@ import java.util.regex.Pattern;
 
 /** Offline, per-track lyrics with optional LRC timestamp synchronization. */
 public class LyricsActivity extends Activity {
+    private static final int REQUEST_IMPORT_LRC=7101, REQUEST_EXPORT_LRC=7102;
     private final int bg=Color.rgb(3,8,15), panel=Color.rgb(7,20,31);
     private final int green=Color.rgb(0,235,220), white=Color.rgb(220,250,255), muted=Color.rgb(105,160,175);
     private final Handler handler=new Handler();
@@ -76,8 +83,11 @@ public class LyricsActivity extends Activity {
         scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setBackgroundColor(Color.BLACK);
         lyricList=new LinearLayout(this);lyricList.setOrientation(LinearLayout.VERTICAL);lyricList.setPadding(dp(8),dp(22),dp(8),dp(22));
         scroll.addView(lyricList);LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(-1,0,1);sp.topMargin=dp(12);sp.bottomMargin=dp(10);root.addView(scroll,sp);
-        LinearLayout actions=new LinearLayout(this);actions.setGravity(Gravity.CENTER);actions.addView(button("EDIT LYRICS",()->editLyrics()),new LinearLayout.LayoutParams(0,dp(48),1));
-        actions.addView(button("FOLLOW: ON",()->{autoFollow=!autoFollow;((Button)actions.getChildAt(1)).setText("FOLLOW: "+(autoFollow?"ON":"OFF"));}),new LinearLayout.LayoutParams(0,dp(48),1));
+        LinearLayout actions=new LinearLayout(this);actions.setGravity(Gravity.CENTER);
+        actions.addView(button("IMPORT LRC",()->importLrc()),new LinearLayout.LayoutParams(0,dp(48),1));
+        actions.addView(button("EDIT",()->editLyrics()),new LinearLayout.LayoutParams(0,dp(48),1));
+        actions.addView(button("EXPORT",()->exportLrc()),new LinearLayout.LayoutParams(0,dp(48),1));
+        actions.addView(button("FOLLOW: ON",()->{autoFollow=!autoFollow;((Button)actions.getChildAt(3)).setText("FOLLOW: "+(autoFollow?"ON":"OFF"));}),new LinearLayout.LayoutParams(0,dp(48),1));
         root.addView(actions);
         TextView hint=label("Plain text works offline. For line-by-line highlighting, use LRC timestamps such as [00:12.50] before each line.",10,muted,false);
         hint.setGravity(Gravity.CENTER);hint.setPadding(dp(6),dp(8),dp(6),0);root.addView(hint);
@@ -86,6 +96,60 @@ public class LyricsActivity extends Activity {
     private String prefKey(){return "lyrics_"+Integer.toHexString(trackKey.hashCode());}
     private String loadLyrics(){return getSharedPreferences("track_lyrics",MODE_PRIVATE).getString(prefKey(),"");}
     private void saveLyrics(String value){getSharedPreferences("track_lyrics",MODE_PRIVATE).edit().putString(prefKey(),value).apply();}
+
+
+    private void importLrc(){
+        Intent pick=new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        pick.addCategory(Intent.CATEGORY_OPENABLE);
+        pick.setType("*/*");
+        pick.putExtra(Intent.EXTRA_MIME_TYPES,new String[]{"text/plain","application/octet-stream"});
+        startActivityForResult(pick,REQUEST_IMPORT_LRC);
+    }
+
+    private void exportLrc(){
+        if(loadLyrics().trim().isEmpty()){
+            Toast.makeText(this,"There are no lyrics to export",Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Intent save=new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        save.addCategory(Intent.CATEGORY_OPENABLE);
+        save.setType("text/plain");
+        String safe=trackTitle.replaceAll("[^A-Za-z0-9 _.-]","_").trim();
+        if(safe.isEmpty())safe="lyrics";
+        save.putExtra(Intent.EXTRA_TITLE,safe+".lrc");
+        startActivityForResult(save,REQUEST_EXPORT_LRC);
+    }
+
+    @Override protected void onActivityResult(int requestCode,int resultCode,Intent data){
+        super.onActivityResult(requestCode,resultCode,data);
+        if(resultCode!=RESULT_OK||data==null||data.getData()==null)return;
+        try{
+            if(requestCode==REQUEST_IMPORT_LRC){
+                StringBuilder text=new StringBuilder();
+                try(InputStream in=getContentResolver().openInputStream(data.getData());
+                    BufferedReader reader=new BufferedReader(new InputStreamReader(in,StandardCharsets.UTF_8))){
+                    String row;int total=0;
+                    while((row=reader.readLine())!=null){
+                        total+=row.length();
+                        if(total>500000)throw new java.io.IOException("Lyrics file is too large");
+                        text.append(row).append('\n');
+                    }
+                }
+                String imported=text.toString().trim();
+                if(imported.isEmpty())throw new java.io.IOException("The selected file is empty");
+                saveLyrics(imported);renderLyrics(imported);
+                Toast.makeText(this,"Lyrics imported and saved offline",Toast.LENGTH_SHORT).show();
+            }else if(requestCode==REQUEST_EXPORT_LRC){
+                try(OutputStream out=getContentResolver().openOutputStream(data.getData(),"wt")){
+                    if(out==null)throw new java.io.IOException("Could not open destination");
+                    out.write(loadLyrics().getBytes(StandardCharsets.UTF_8));
+                }
+                Toast.makeText(this,"Lyrics exported",Toast.LENGTH_SHORT).show();
+            }
+        }catch(Exception e){
+            Toast.makeText(this,"Lyrics file error: "+e.getMessage(),Toast.LENGTH_LONG).show();
+        }
+    }
 
     private void editLyrics(){
         EditText input=new EditText(this);input.setText(loadLyrics());input.setGravity(Gravity.TOP|Gravity.START);
