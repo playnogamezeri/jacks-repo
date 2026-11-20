@@ -7,7 +7,6 @@ import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.media.audiofx.BassBoost;
 import android.media.audiofx.Equalizer;
-import android.media.audiofx.PresetReverb;
 import android.media.audiofx.Virtualizer;
 import android.media.audiofx.Visualizer;
 import android.os.Bundle;
@@ -28,16 +27,12 @@ public class StudioActivity extends Activity {
     private Equalizer eq;
     private BassBoost bass;
     private Virtualizer virtualizer;
-    private PresetReverb reverb;
     private Visualizer visualizer;
     private AnalyzerView analyzer;
     private boolean reverbEnabled=false, bassEnabled=true, virtualizerEnabled=true;
     private int reverbIndex=0;
-    private final short[] reverbPresets={PresetReverb.PRESET_NONE,PresetReverb.PRESET_SMALLROOM,
-            PresetReverb.PRESET_MEDIUMROOM,PresetReverb.PRESET_LARGEROOM,
-            PresetReverb.PRESET_MEDIUMHALL,PresetReverb.PRESET_LARGEHALL,
-            PresetReverb.PRESET_PLATE};
-    private final String[] reverbNames={"DRY","SMALL ROOM","MEDIUM ROOM","LARGE ROOM","MEDIUM HALL","LARGE HALL","PLATE"};
+    private final String[] reverbNames={"SMALL ROOM","STUDIO","CONCERT HALL","PLATE","CATHEDRAL"};
+    private double reverbRoom=0.65,reverbDecay=2.8,reverbWet=28,reverbPredelay=18;
     private LinearLayout content;
     private boolean effectsReady=false, eqEnabled=true;
     private String eqPresetName="CUSTOM";
@@ -91,9 +86,7 @@ public class StudioActivity extends Activity {
             try { eq=new Equalizer(0,session); eqEnabled=eq.getEnabled(); } catch(Exception ignored) { eq=null; }
             try { bass=new BassBoost(0,session); bassEnabled=bass.getEnabled(); } catch(Exception ignored) { bass=null; }
             try { virtualizer=new Virtualizer(0,session); virtualizerEnabled=virtualizer.getEnabled(); } catch(Exception ignored) { virtualizer=null; }
-            // PresetReverb is auxiliary: create it on output mix session 0 and attach it to MediaPlayer.
-            try { reverb=new PresetReverb(0,0); reverb.setPreset(PresetReverb.PRESET_NONE); reverb.setEnabled(false); } catch(Exception ignored) { reverb=null; }
-            effectsReady=(eq!=null||bass!=null||virtualizer!=null||reverb!=null);
+            effectsReady=(eq!=null||bass!=null||virtualizer!=null);
         }catch(Exception e){
             releaseEffects();
             Toast.makeText(this,"Some audio effects are unavailable on this device",Toast.LENGTH_LONG).show();
@@ -280,37 +273,67 @@ public class StudioActivity extends Activity {
     }
 
     private void buildSpace(){
-        LinearLayout box=section("04 // STEREO & AMBIENCE");
+        LinearLayout box=section("04 // STEREO & SOFTWARE AMBIENCE");
         virtualizerStatus=label("VIRTUALIZER: "+(virtualizer!=null?(virtualizerEnabled?"ACTIVE":"BYPASSED"):"UNAVAILABLE"),10,cyan,true);box.addView(virtualizerStatus);
         if(virtualizer!=null){
-            box.addView(button("TOGGLE VIRTUALIZER",()->{try{virtualizerEnabled=!virtualizerEnabled;virtualizer.setEnabled(virtualizerEnabled);virtualizerStatus.setText("VIRTUALIZER: "+(virtualizerEnabled?"ACTIVE":"BYPASSED"));toast(virtualizerEnabled?"Stereo processing enabled":"Stereo processing bypassed");}catch(Exception e){virtualizerStatus.setText("VIRTUALIZER: CONTROL ERROR");toast("Virtualizer unavailable");}}));
+            box.addView(button("TOGGLE VIRTUALIZER",()->{try{virtualizerEnabled=!virtualizerEnabled;virtualizer.setEnabled(virtualizerEnabled);virtualizerStatus.setText("VIRTUALIZER: "+(virtualizerEnabled?"ACTIVE":"BYPASSED"));}catch(Exception e){toast("Virtualizer unavailable");}}));
             addStrengthSlider(box,"STEREO WIDTH",virtualizer);
         } else box.addView(label("VIRTUALIZER NOT SUPPORTED BY THIS DEVICE.",10,muted,false));
-        LinearLayout row=new LinearLayout(this); row.setGravity(Gravity.CENTER_VERTICAL);
-        reverbStatus=label(reverb==null?"REVERB: NOT SUPPORTED":"REVERB: "+reverbNames[reverbIndex]+" • OFF",11,cyan,true);
-        TextView preset=reverbStatus;
-        row.addView(preset,new LinearLayout.LayoutParams(0,dp(42),1));
-        row.addView(button("NEXT SPACE",()->{
-            if(reverb==null){toast("Reverb unavailable");return;}
-            reverbIndex=(reverbIndex+1)%reverbPresets.length;
-            try{reverb.setPreset(reverbPresets[reverbIndex]);preset.setText("REVERB: "+reverbNames[reverbIndex]+" • "+(reverbEnabled?"ACTIVE":"OFF"));}
-            catch(Exception e){toast("Reverb preset unavailable");}
+
+        android.content.SharedPreferences prefs=getSharedPreferences("jack_audio_fx",MODE_PRIVATE);
+        reverbEnabled=prefs.getBoolean("software_reverb_enabled",false);
+        reverbRoom=prefs.getFloat("reverb_room",0.65f);
+        reverbDecay=prefs.getFloat("reverb_decay",2.8f);
+        reverbWet=prefs.getFloat("reverb_wet",28f);
+        reverbPredelay=prefs.getFloat("reverb_predelay",18f);
+        reverbStatus=label("SOFTWARE REVERB: "+(reverbEnabled?"ACTIVE":"BYPASSED"),11,cyan,true);
+        box.addView(reverbStatus);
+        box.addView(button("TOGGLE SOFTWARE REVERB",()->{
+            reverbEnabled=!reverbEnabled;saveReverbSettings();
+            reverbStatus.setText("SOFTWARE REVERB: "+(reverbEnabled?"ACTIVE":"BYPASSED"));
+            toast(reverbEnabled?"Software reverb enabled":"Software reverb bypassed");
         }));
-        box.addView(row);
-        if(reverb!=null)box.addView(button("TOGGLE REVERB",()->{
-            try{
-                if(!reverbEnabled){
-                    if(!PlaybackService.attachAuxEffect(reverb.getId())){toast("Start playback to attach reverb");return;}
-                    reverb.setEnabled(true);reverbEnabled=true;
-                }else{
-                    PlaybackService.detachAuxEffect();reverb.setEnabled(false);reverbEnabled=false;
-                }
-                reverbStatus.setText("REVERB: "+reverbNames[reverbIndex]+" • "+(reverbEnabled?"ACTIVE":"OFF"));
-                reverbStatus.setText("REVERB: "+reverbNames[reverbIndex]+" • "+(reverbEnabled?"ACTIVE":"OFF"));
-                toast(reverbEnabled?"Reverb enabled":"Reverb bypassed");
-            }catch(Exception e){toast("Reverb routing unavailable");}
+        LinearLayout presetRow=new LinearLayout(this);presetRow.setGravity(Gravity.CENTER_VERTICAL);
+        presetRow.addView(label("ROOM PRESET",10,muted,true),new LinearLayout.LayoutParams(0,dp(40),1));
+        presetRow.addView(button("NEXT PRESET",()->{
+            reverbIndex=(reverbIndex+1)%reverbNames.length;
+            double[][] values={{0.25,1.1,22,8},{0.48,2.0,28,15},{0.82,4.5,38,28},{0.62,3.2,48,12},{1.0,8.0,42,45}};
+            reverbRoom=values[reverbIndex][0];reverbDecay=values[reverbIndex][1];reverbWet=values[reverbIndex][2];reverbPredelay=values[reverbIndex][3];
+            saveReverbSettings();toast("Reverb preset: "+reverbNames[reverbIndex]);
         }));
-        else box.addView(label("AUXILIARY REVERB NOT SUPPORTED.",10,muted,false));
+        box.addView(presetRow);
+        addReverbSlider(box,"ROOM SIZE",0,100,(int)(reverbRoom*100),v->reverbRoom=v/100.0);
+        addReverbSlider(box,"DECAY",2,120,(int)(reverbDecay*10),v->reverbDecay=v/10.0);
+        addReverbSlider(box,"WET / DRY",0,100,(int)reverbWet,v->reverbWet=v);
+        addReverbSlider(box,"PRE-DELAY",0,250,(int)reverbPredelay,v->reverbPredelay=v);
+        box.addView(label("PCM SOFTWARE DSP • PROCESSES THE MAIN PLAYER OUTPUT • NO DEVICE REVERB API REQUIRED",9,muted,false));
+        saveReverbSettings();
+    }
+
+    private interface ReverbValue { void set(int value); }
+    private void addReverbSlider(LinearLayout box,String name,int min,int max,int initial,ReverbValue setter){
+        TextView value=label(name+"  "+initial+(name.equals("DECAY")?" (0.1 sec units)":name.equals("PRE-DELAY")?" ms":"%"),9,muted,true);
+        box.addView(value);
+        SeekBar seek=new SeekBar(this);seek.setMax(max-min);seek.setProgress(Math.max(0,Math.min(max-min,initial-min)));tint(seek);box.addView(seek);
+        seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
+            public void onProgressChanged(SeekBar b,int p,boolean user){
+                int v=min+p;setter.set(v);
+                value.setText(name+"  "+v+(name.equals("DECAY")?" (0.1 sec units)":name.equals("PRE-DELAY")?" ms":"%"));
+                if(user)saveReverbSettings();
+            }
+            public void onStartTrackingTouch(SeekBar b){}
+            public void onStopTrackingTouch(SeekBar b){}
+        });
+    }
+    private void saveReverbSettings(){
+        getSharedPreferences("jack_audio_fx",MODE_PRIVATE).edit()
+            .putBoolean("software_reverb_enabled",reverbEnabled)
+            .putFloat("reverb_room",(float)reverbRoom)
+            .putFloat("reverb_decay",(float)reverbDecay)
+            .putFloat("reverb_wet",(float)reverbWet)
+            .putFloat("reverb_predelay",(float)reverbPredelay).apply();
+        PlaybackService.configureSoftwareReverb(reverbEnabled,reverbRoom,reverbDecay,reverbWet,reverbPredelay);
+        if(reverbStatus!=null)reverbStatus.setText("SOFTWARE REVERB: "+(reverbEnabled?"ACTIVE":"BYPASSED"));
     }
 
     private interface ToggleAction{void set(boolean value);}
@@ -374,10 +397,9 @@ public class StudioActivity extends Activity {
     private void footer(){TextView t=label("DJ TUNE JACK AUDIO ENGINE  //  LIVE FX  //  DEVICE SUPPORT VARIES",9,muted,true);t.setGravity(Gravity.CENTER);t.setPadding(0,dp(16),0,dp(6));content.addView(t);}
     private void releaseEffects(){
         if(visualizer!=null){try{visualizer.setEnabled(false);visualizer.release();}catch(Exception ignored){}visualizer=null;}
-        if(reverbEnabled)PlaybackService.detachAuxEffect();
         if(eq!=null){eq.release();eq=null;} if(bass!=null){bass.release();bass=null;}
         if(virtualizer!=null){virtualizer.release();virtualizer=null;}
-        if(reverb!=null){reverb.release();reverb=null;} effectsReady=false;
+        effectsReady=false;
     }
     @Override protected void onDestroy(){releaseEffects();super.onDestroy();}
 }
