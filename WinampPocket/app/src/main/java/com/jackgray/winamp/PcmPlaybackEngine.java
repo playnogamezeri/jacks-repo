@@ -177,7 +177,7 @@ public final class PcmPlaybackEngine {
                     inputEos = false; outputEos = false;
                     track.pause(); track.flush(); track.play();
                     framesWritten = requested * sampleRate / 1000L;
-                    positionMs = requested;
+                    positionMs = (int)requested;
                     synchronized (this) { reverb = null; }
                 }
 
